@@ -178,7 +178,7 @@ L.Control.Velocity = L.Control.extend({
 		clickPosition: {
 			lng: -1, lat: -1, x: -1, y: -1
 		},
-		// path: null;
+		path: null,
 		onAdd: null,
 		onRemove: null
 	},
@@ -261,10 +261,10 @@ L.Control.Velocity = L.Control.extend({
 	_onClick: function _onClick(e) {
 		var self = this;
 		var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
-		var clickLnglat = this.options.leafletVelocity._map.containerPointToLatLng(L.point(e.containerPoint.x, e.containerPoint.y));
+		var clickLnglat = this.options.leafletVelocity._map.containerPointToLatLng(clickPix);
 		
-		this.options.clickPosition.x = clickPix.x;
-		this.options.clickPosition.y = clickPix.y;
+		// this.options.clickPosition.x = clickPix.x;
+		// this.options.clickPosition.y = clickPix.y;
 		this.options.clickPosition.lng = clickLnglat.lng;
 		this.options.clickPosition.lat = clickLnglat.lat;
 		// this.options.path[0] = 
@@ -313,8 +313,9 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_windy: null,
 	_context: null,
 	_timer: 0,
-	_mouseControl: null,
+	_ControlLayer: null,
 	_path: null,
+	_pathstatus: 0,
 
 	initialize: function initialize(options) {
 		L.setOptions(this, options);
@@ -342,21 +343,22 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		this.fire('load');
 	},
 
-	pixToLatlng: function pixToLatlng(x, y, _map) {
-		// var latlng = this.velocityType;
-		// return latlng;
-		var map = _map;
-		var latlng = this._map.containerPointToLatLng(L.point(x, y));
-		return [latlng.x, latlng.y];
-	},
+	//---------------------terrible methos-------------
+	// pixToLatlng: function pixToLatlng(x, y, _map) {
+	// 	// var latlng = this.velocityType;
+	// 	// return latlng;
+	// 	var map = _map;
+	// 	var latlng = this._map.containerPointToLatLng(L.point(x, y));
+	// 	return [latlng.x, latlng.y];
+	// },
 
-	latlngToPix: function latlngToPix(lng, lat, _map) {
-		// var latlng = this.velocityType;
-		// // return latlng;
-		var map = _map;
-		var pix = this._map.latLngToContainerPoint(lat, lng);
-		return [pix.lng, pix.lat];
-	},
+	// latlngToPix: function latlngToPix(lng, lat, _map) {
+	// 	// var latlng = this.velocityType;
+	// 	// // return latlng;
+	// 	var map = _map;
+	// 	var pix = this._map.latLngToContainerPoint(lat, lng);
+	// 	return [pix.lng, pix.lat];
+	// },
 
 	/*---------------- PRIVATE ----------------*/
 
@@ -382,13 +384,16 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_startWindy: function _startWindy() {
 		var bounds = this._map.getBounds();
 		var size = this._map.getSize();
-		var clickPos = this._mouseControl.options.clickPosition;
+		var clickPos = this._ControlLayer.options.clickPosition;
+		var clickLnglat2Pix = this._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
 		var path = [];
+		var comPath = this._ControlLayer.options.path;
+		var pathStatus = this._pathstatus;
 		var pos = [];
 		// pos.x = clickPos.lng;
 		// pos.y = clickPos.lat;
-		pos.x = clickPos.x;
-		pos.y = clickPos.y;
+		pos.x = clickLnglat2Pix.x;
+		pos.y = clickLnglat2Pix.y;
 		pos.lng = clickPos.lng;
 		pos.lat = clickPos.lat;
 		pos.velocityType = this.options.displayOptions.velocityType;
@@ -406,12 +411,28 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 				[bounds._southWest.lng, bounds._southWest.lat],
 				[bounds._northEast.lng, bounds._northEast.lat]
 			],
-			clickPos,
+			pos,
 			path,
-			this.map,
-			this.pixToLatlng,
-			this.latlngToPix);
-		// console.log(path)
+			function(path){
+				comPath = path;
+				// comPath = _pixToLatlngPath(path);
+				pathStatus = 1;
+				// console.log(path);
+			});
+		if(pathStatus === 1){
+			console.log(comPath)
+		}
+
+	},
+
+	_pixToLatlngPath: function _pixToLatlngPath(path) {
+		var map = this._map;
+		path.forEach(function(pathParticle){
+			var point = map.containerPointToLatLng(L.point(pathParticle.x, pathParticle.y));
+			pathParticle.lng = point.lng;
+			pathParticle.lat = point.lat;
+		})
+		return path;
 	},
 
 	_initWindy: function _initWindy(self) {
@@ -435,10 +456,10 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	},
 
 	_initMouseHandler: function _initMouseHandler() {
-		if (!this._mouseControl && this.options.displayValues) {
+		if (!this._ControlLayer && this.options.displayValues) {
 			var options = this.options.displayOptions || {};
 			options['leafletVelocity'] = this;
-			this._mouseControl = L.control.velocity(options).addTo(this._map);
+			this._ControlLayer = L.control.velocity(options).addTo(this._map);
 		}
 	},
 
@@ -456,8 +477,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		if (this._timer) clearTimeout(this._timer);
 		if (this._windy) this._windy.stop();
 		if (this._context) this._context.clearRect(0, 0, 3000, 3000);
-		if (this._mouseControl) this._map.removeControl(this._mouseControl);
-		this._mouseControl = null;
+		if (this._ControlLayer) this._map.removeControl(this._ControlLayer);
+		this._ControlLayer = null;
 		this._windy = null;
 		this._map.removeLayer(this._canvasLayer);
 	}
@@ -507,6 +528,7 @@ var Windy = function Windy(params) {
 
 	var NULL_WIND_VECTOR = [NaN, NaN, null]; // singleton for no wind in the form: [u, v, magnitude]
 
+	var PATH_PIX;
 	var builder;
 	var grid;
 	var gridData = params.data;
@@ -833,7 +855,7 @@ var Windy = function Windy(params) {
 	};
 
 	var animationLoop;
-	var animate = function animate(grid, bounds, field, pos, path) {
+	var animate = function animate(grid, bounds, field, pos, path, callback) {
 
 		function windIntensityColorScale(min, max) {
 
@@ -866,6 +888,7 @@ var Windy = function Windy(params) {
 		var pathCount = 0;	
 		var pathStatus = 0;	
 		var velocityType = pos.velocityType;
+		
 		// var p2l = pixToLatlng();
 		// var l2p = latlngToPix();
 		pathParticle.x = pos.x;
@@ -938,32 +961,34 @@ var Windy = function Windy(params) {
 			// }
 
 			// ------------------------------follow particles------------------------------------------
-			var x = pathParticle.x;
-			var y = pathParticle.y;
-			// var latlng = map.containerPointToLatLng(L.latLng(x, y));
-			var v = field(x, y);
-			// var v = grid.interpolate(x, y);
-			var m = v[2];
-			var vtype = velocityType;
-			var xt = x + v[0];
-			var yt = y + v[1];
-			var p = [];
-			if (field(xt, yt)[2] >=MIN_VELOCITY_SPEED) {
-				p.x = x; p.y = y; p.xt = xt; p.yt = yt;
-				p.lng = latlng[0]; p.lat = latlng[1];
-				p.velocityType = vtype;
-				// path[pathCount] = p;
-			}else{
-				// console.log('Velocity Slow!')
-				pathStatus = 1;
-				return ;
-			}
-			path.push(p);
-			console.log(p);
-			console.log(path.length);
-			pathCount +=1;
-			pathParticle.x = xt;
-			pathParticle.y = yt;
+			if(pathStatus !== 1){
+				var x = pathParticle.x;
+				var y = pathParticle.y;
+				// var latlng = map.containerPointToLatLng(L.latLng(x, y));
+				var v = field(x, y);
+				// var v = grid.interpolate(x, y);
+				var m = v[2];
+				var vtype = velocityType;
+				var xt = x + v[0];
+				var yt = y + v[1];
+				var p = [];
+				if (field(xt, yt)[2] >=MIN_VELOCITY_SPEED) {
+					p.x = x; p.y = y; p.xt = xt; p.yt = yt;
+					p.velocityType = vtype;
+					// path[pathCount] = p;
+				}else{
+					// console.log('Velocity Slow!')
+					pathStatus = 1;
+					console.log('PATH END')
+					return ;
+				}
+				path.push(p);
+				// console.log(p);
+				// console.log(path.length);
+				pathCount +=1;
+				pathParticle.x = xt;
+				pathParticle.y = yt;
+			};
 		}
 
 		var g = params.canvas.getContext("2d");
@@ -1051,12 +1076,18 @@ var Windy = function Windy(params) {
 				evolvePath();
 				draw();
 				drawPath();
+				if(pathStatus === 1){
+					callback(path);
+				}
 			}
 		})();
-		return path;
 	};
 
-	var start = function start(bounds, width, height, extent, pos, path, pixToLatlng, latlngToPix, _map) {
+	var setPath = function setPath(path) {
+		PATH_PIX = path;
+	}
+
+	var start = function start(bounds, width, height, extent, pos, path, callback) {
 
 		var mapBounds = {
 			south: deg2rad(extent[0][1]),
@@ -1067,7 +1098,6 @@ var Windy = function Windy(params) {
 			height: height
 		};
 		var comPath = [];
-
 		stop();
 		
 		// build grid
@@ -1076,13 +1106,13 @@ var Windy = function Windy(params) {
 			interpolateField(grid, buildBounds(bounds, width, height), mapBounds, function (grid, bounds, field) {
 				// animate the canvas with random points
 				windy.field = field;
-				comPath =  animate(grid, bounds, field, pos, path, pixToLatlng, latlngToPix, _map);
-				console.log(comPath.length);
+				animate(grid, bounds, field, pos, path, function (path){
+					comPath = path;
+					callback(comPath);
+				});
+				// animate(grid, bounds, field, pos, path);
 			});
 		});
-
-		// console.log(project(160,30,mapBounds));
-		
 	};
 
 	var stop = function stop() {
