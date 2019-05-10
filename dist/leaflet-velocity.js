@@ -399,8 +399,13 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		pos.velocityType = this.options.displayOptions.velocityType;
 		console.log(pos);
 
+		var set_Path = function setPath(path){
+			comPath = path;
+			console.log(comPath);
+		};
+
 		// bounds, width, height, extent
-		this._windy.start(
+		comPath = this._windy.start(
 			[
 				[0, 0],
 				[size.x, size.y]
@@ -413,15 +418,15 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			],
 			pos,
 			path,
+			// set_Path
 			function(path){
-				comPath = path;
-				// comPath = _pixToLatlngPath(path);
-				pathStatus = 1;
+				return path;
 				// console.log(path);
-			});
-		if(pathStatus === 1){
-			console.log(comPath)
-		}
+			}
+		);
+		setTimeout(function(){
+			console.log(comPath);
+		}, 20000);
 
 	},
 
