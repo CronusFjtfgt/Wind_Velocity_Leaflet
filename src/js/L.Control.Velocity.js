@@ -5,7 +5,7 @@ L.Control.Velocity = L.Control.extend({
         emptyString: 'Unavailable',
         // Could be any combination of 'bearing' (angle toward which the flow goes) or 'meteo' (angle from which the flow comes)
         // and 'CW' (angle value increases clock-wise) or 'CCW' (angle value increases counter clock-wise)
-        angleConvention: 'bearingCCW',
+        angleConvention: 'bearingCW',
 	    // Could be 'm/s' for meter per second, 'k/h' for kilometer per hour or 'kt' for knots
 	    speedUnit: 'm/s',
         onAdd: null,
@@ -14,8 +14,9 @@ L.Control.Velocity = L.Control.extend({
 
     onAdd: function (map) {
         this._container = L.DomUtil.create('div', 'leaflet-control-velocity');
-        L.DomEvent.disableClickPropagation(this._container);
-        map.on('mousemove', this._onMouseMove, this);
+        // L.DomEvent.disableClickPropagation(this._container);
+        map.on('mousemove', mousemove: this._onMouseMove, this);
+        map.on('mouseclick', this._onClick, this);
         this._container.innerHTML = this.options.emptyString;
         if (this.options.leafletVelocity.options.onAdd) this.options.leafletVelocity.options.onAdd();
         return this._container;
@@ -23,6 +24,7 @@ L.Control.Velocity = L.Control.extend({
 
     onRemove: function (map) {
         map.off('mousemove', this._onMouseMove, this);
+        map.off('mouseclick', this._onClick, this);
 	    if (this.options.leafletVelocity.options.onRemove) this.options.leafletVelocity.options.onRemove();
     },
 
@@ -74,16 +76,24 @@ L.Control.Velocity = L.Control.extend({
 	    var htmlOut = "";
 
 	    if(gridValue && !isNaN(gridValue[0]) && !isNaN(gridValue[1]) && gridValue[2]) {
-		    htmlOut = "<strong>"+ this.options.velocityType +" Direction: </strong>"+
-			    self.vectorToDegrees(gridValue[0],gridValue[1],this.options.angleConvention).toFixed(2) +"°"+
-			    ", <strong>"+ this.options.velocityType +" Speed: </strong>"+
-			    self.vectorToSpeed(gridValue[0],gridValue[1],this.options.speedUnit).toFixed(2) + this.options.speedUnit;
+		    htmlOut = "<strong>Lng: " + pos.lng.toFixed(2) + "</strong>" 
+                + ",<strong> Lat: " + pos.lat.toFixed(2) + "</strong>" 
+                + ",<strong> : " + L.point(e.containerPoint.x, e.containerPoint.y) + "</strong>" 
+                + ",<strong> " + this.options.velocityType + " Direction: </strong>" + self.vectorToDegrees(gridValue[0], gridValue[1], this.options.angleConvention).toFixed(2) + "°" 
+                + ",<strong> " + this.options.velocityType + " Speed: </strong>" + self.vectorToSpeed(gridValue[0], gridValue[1], this.options.speedUnit).toFixed(2) + this.options.speedUnit;
 	    }
 	    else {
 		    htmlOut = this.options.emptyString;
 	    }
 
 	    self._container.innerHTML = htmlOut;
+    }
+
+    _onClick: function(e){
+        var self = this;
+        var pos = L.point(e.containerPoint.x, e.containerPoint.y);
+        
+
     }
 
 });

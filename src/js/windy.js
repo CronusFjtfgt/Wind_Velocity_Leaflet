@@ -55,11 +55,12 @@ var Windy = function( params ){
 
 	// interpolation for vectors like wind (u,v,m)
 	var bilinearInterpolateVector = function(x, y, g00, g10, g01, g11) {
-		var rx = (1 - x);
-		var ry = (1 - y);
+		var rx = (1 - x); //x为经度lot的小数部分
+		var ry = (1 - y); //y为纬度lat的小数部分
 		var a = rx * ry,  b = x * ry,  c = rx * y,  d = x * y;
 		var u = g00[0] * a + g10[0] * b + g01[0] * c + g11[0] * d;
 		var v = g00[1] * a + g10[1] * b + g01[1] * c + g11[1] * d;
+		console.log(u+','+v+','+m);
 		return [u, v, Math.sqrt(u * u + v * v)];
 	};
 
@@ -148,12 +149,21 @@ var Windy = function( params ){
 
 		if(!grid) return null;
 
-		var i = floorMod(λ - λ0, 360) / Δλ;  // calculate longitude index in wrapped range [0, 360)
-		var j = (φ0 - φ) / Δφ;                 // calculate latitude index in direction +90 to -90
+		var i = floorMod(λ - λ0, 360) / Δλ;  // calculate longitude index in wrapped range [0, 360) 找到该经度在数组中的位置 row[]
+		var j = (φ0 - φ) / Δφ;                 // calculate latitude index in direction +90 to -90 找到该纬度在数组中的位置 grid[]
 
-		var fi = Math.floor(i), ci = fi + 1;
-		var fj = Math.floor(j), cj = fj + 1;
-
+		var fi = Math.floor(i), ci = fi + 1; //  g00(fi,fj)--g10(ci,fj)
+		var fj = Math.floor(j), cj = fj + 1; //   |            |
+											 //  g01(fi,cj)--g11(ci,cj)
+											 //         1      2          
+											 //After converting λ and φ to fractional grid indexes i and j, we find the
+            //        fi  i   ci          four points "G" that enclose point (i, j). These points are at the four
+            //         | =1.4 |           corners specified by the floor and ceiling of i and j. For example, given
+            //      ---G--|---G--- fj 8   i = 1.4 and j = 8.3, the four surrounding grid points are (1, 8), (2, 8),
+            //    j ___|_ .   |           (1, 9) and (2, 9).
+            //  =8.3   |      |
+            //      ---G------G--- cj 9   Note that for wrapped grids, the first column is duplicated as the last
+            //         |      |           column, so the index ci can be used without taking a modulo.
 		var row;
 		if ((row = grid[fj])) {
 			var g00 = row[fi];
@@ -184,7 +194,7 @@ var Windy = function( params ){
 	 */
 	var floorMod = function(a, n) {
 		return a - n * Math.floor(a / n);
-	};
+	};//以n为模，对a进行模运算 === a%n
 
 	/**
 	 * @returns {Number} the value x clamped to the range [low, high].
@@ -215,9 +225,32 @@ var Windy = function( params ){
 		return wind;
 	};
 
+	/**
+     * Returns the distortion introduced by the specified projection at the given point.
+     *
+     * This method uses finite difference estimates to calculate warping by adding a very small amount (h) to
+     * both the longitude and latitude to create two lines. These lines are then projected to pixel space, where
+     * they become diagonals of triangles that represent how much the projection warps longitude and latitude at
+     * that location.
+     *
+     * <pre>
+     *        (λ, φ+h)                  (xλ, yλ)
+     *           .                         .
+     *           |               ==>        \
+     *           |                           \   __. (xφ, yφ)
+     *    (λ, φ) .____. (λ+h, φ)       (x, y) .--
+     * </pre>
+     *
+     * See:
+     *     Map Projections: A Working Manual, Snyder, John P: pubs.er.usgs.gov/publication/pp1395
+     *     gis.stackexchange.com/questions/5068/how-to-create-an-accurate-tissot-indicatrix
+     *     www.jasondavies.com/maps/tissot
+     *
+     * @returns {Array} array of scaled derivatives [dx/dλ, dy/dλ, dx/dφ, dy/dφ]
+     */
 	var distortion = function(projection, λ, φ, x, y, windy) {
 		var τ = 2 * Math.PI;
-		var H = Math.pow(10, -5.2);
+		var H = Math.pow(10, -5.2); //底数base:10 的指数:-5.2 次幂
 		var hλ = λ < 0 ? H : -H;
 		var hφ = φ < 0 ? H : -H;
 
@@ -256,8 +289,10 @@ var Windy = function( params ){
 			var x, y;
 			var safetyNet = 0;
 			do {
-				x = Math.round(Math.floor(Math.random() * bounds.width) + bounds.x);
-				y = Math.round(Math.floor(Math.random() * bounds.height) + bounds.y)
+				// x = Math.round(Math.floor(Math.random() * bounds.width) + bounds.x);
+				// y = Math.round(Math.floor(Math.random() * bounds.height) + bounds.y)
+				x = Math.round(Math.floor(bounds.width) + bounds.x);
+				y = Math.round(Math.floor(bounds.height) + bounds.y)
 			} while (field(x, y)[2] === null && safetyNet++ < 30);
 			o.x = x;
 			o.y = y;
@@ -326,11 +361,11 @@ var Windy = function( params ){
 		function interpolateColumn(x) {
 			var column = [];
 			for (var y = bounds.y; y <= bounds.yMax; y += 2) {
-				var coord = invert( x, y, extent );
+				var coord = invert( x, y, extent ); //return [lng,lat]
 				if (coord) {
 					var λ = coord[0], φ = coord[1];
 					if (isFinite(λ)) {
-						var wind = grid.interpolate(λ, φ);
+						var wind = grid.interpolate(λ, φ); //return [u,v,m]
 						if (wind) {
 							wind = distort(projection, λ, φ, x, y, velocityScale, wind, extent);
 							column[y+1] = column[y] = wind;
@@ -418,6 +453,7 @@ var Windy = function( params ){
 		}
 
 		var g = params.canvas.getContext("2d");
+		var con = params.
 		g.lineWidth = PARTICLE_LINE_WIDTH;
 		g.fillStyle = fadeFillStyle;
 		g.globalAlpha = 0.6;
@@ -480,7 +516,7 @@ var Windy = function( params ){
 				windy.field = field;
 				animate( bounds, field );
 			});
-
+			
 		});
 	};
 
