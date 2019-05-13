@@ -387,8 +387,9 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var clickPos = this._ControlLayer.options.clickPosition;
 		var clickLnglat2Pix = this._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
 		var path = [];
-		var comPath = this._ControlLayer.options.path;
-		var pathStatus = this._pathstatus;
+		// var comPath = this._ControlLayer.options.path;
+		var comPath = [];
+		var pathStatus = 0;
 		var pos = [];
 		// pos.x = clickPos.lng;
 		// pos.y = clickPos.lat;
@@ -399,13 +400,13 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		pos.velocityType = this.options.displayOptions.velocityType;
 		console.log(pos);
 
-		var set_Path = function setPath(path){
-			comPath = path;
-			console.log(comPath);
-		};
+		// var set_Path = function setPath(path){
+		// 	comPath = path;
+		// 	console.log(comPath);
+		// };
 
 		// bounds, width, height, extent
-		comPath = this._windy.start(
+		this._windy.start(
 			[
 				[0, 0],
 				[size.x, size.y]
@@ -420,13 +421,19 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			path,
 			// set_Path
 			function(path){
-				return path;
-				// console.log(path);
+				if (path.length !== 0) {
+					// comPath = [];
+					comPath =  path;
+					// _pathstatus = 1;
+					pathStatus = 1;
+				}	
 			}
 		);
-		setTimeout(function(){
-			console.log(comPath);
-		}, 20000);
+		setInterval(function(compath){
+			if(pathStatus === 1){
+				console.log(comPath);
+			}
+		}, 1000);// loop exec
 
 	},
 
@@ -519,11 +526,11 @@ var Windy = function Windy(params) {
 	var MIN_VELOCITY_INTENSITY = params.minVelocity || 0; // velocity at which particle intensity is minimum (m/s)
 	var MAX_VELOCITY_INTENSITY = params.maxVelocity || 10; // velocity at which particle intensity is maximum (m/s)
 	var VELOCITY_SCALE = (params.velocityScale || 0.005) * (Math.pow(window.devicePixelRatio, 1 / 3) || 1); // scale for wind velocity (completely arbitrary--this value looks nice)
-	var MAX_PARTICLE_AGE = params.particleAge || 90; // max number of frames a particle is drawn before regeneration
+	var MAX_PARTICLE_AGE = params.particleAge || 150; // max number of frames a particle is drawn before regeneration
 	var PARTICLE_LINE_WIDTH = params.lineWidth || 1; // line width of a drawn particle
 	var PARTICLE_MULTIPLIER = params.particleMultiplier || 1 / 600; // particle count scalar (completely arbitrary--this values looks nice)
 	var PARTICLE_REDUCTION = Math.pow(window.devicePixelRatio, 1 / 3) || 1.6; // multiply particle count for mobiles by this amount
-	var FRAME_RATE = params.frameRate || 15,
+	var FRAME_RATE = params.frameRate || 45,
 	    FRAME_TIME = 1000 / FRAME_RATE; // desired frames per second
 	var MIN_VELOCITY_SPEED = 1; // min number of velocity speed
 
@@ -1078,8 +1085,8 @@ var Windy = function Windy(params) {
 			if (delta > FRAME_TIME) {
 				then = now - delta % FRAME_TIME;
 				evolve();
-				evolvePath();
 				draw();
+				evolvePath();
 				drawPath();
 				if(pathStatus === 1){
 					callback(path);
