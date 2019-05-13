@@ -262,16 +262,16 @@ L.Control.Velocity = L.Control.extend({
 	_onClick: function _onClick(e) {
 		var self = this;
 		var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
-		var clickLnglat = this.options.leafletVelocity._map.containerPointToLatLng(clickPix);
+		var clickLnglat = self.options.leafletVelocity._map.containerPointToLatLng(clickPix);
 		
-		// this.options.clickPosition.x = clickPix.x;
-		// this.options.clickPosition.y = clickPix.y;
-		this.clickPosition.lng = clickLnglat.lng;
-		this.clickPosition.lat = clickLnglat.lat;
-		this.pathStatus = 0;
-		// this.options.path[0] = 
-		this.options.leafletVelocity._windy.stop();
-		this.options.leafletVelocity._clearAndRestart();
+		// self.options.clickPosition.x = clickPix.x;
+		// self.options.clickPosition.y = clickPix.y;
+		self.clickPosition.lng = clickLnglat.lng;
+		self.clickPosition.lat = clickLnglat.lat;
+		self.options.leafletVelocity._pathStatus = 0;
+		// self.options.path[0] = 
+		self.options.leafletVelocity._windy.stop();
+		self.options.leafletVelocity._clearAndRestart();
 		// ------------------------------------------------------------------------------------------
 		// var path = self.path;
 		// var pathStatus = self.pathStatus;
@@ -324,7 +324,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_timer: 0,
 	_ControlLayer: null,
 	_path: [],
-	// _pathstatus: 0,
+	_pathsSatus: 0,
 
 	initialize: function initialize(options) {
 		L.setOptions(this, options);
@@ -396,17 +396,15 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var size = self._map.getSize();
 		var clickPos = self._ControlLayer.clickPosition;
 		var clickLnglat2Pix = self._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
-		// var path = self._path;
-
-		// if(self._path.length !== 0){
+		
+		var path = self._path;
+		// if(self._pathStatus !== 0){
 		// 	// console.log(path.length);
 		// 	self._path.length = 0;
-		// 	pathStatus = 0;
-			// console.log('status:'+pathStatus);
 		// }
-		
+
 		// var comPath = self._control.options.path;
-		var pathStatus = self._ControlLayer.pathStatus;
+		var pathStatus = self._pathsSatus;
 		var pos = [];
 		// pos.x = clickPos.lng;
 		// pos.y = clickPos.lat;
@@ -438,12 +436,9 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			function(p){
 				if (p.length !== 0) {
 					// self_control.path = p
-					self._path = p;
-					pathStatus = 1;
-				}else{
-					pathStatus = 0;
-					// console.log('status:'+pathStatus);
-				}
+					self._path = self._pixToLatlngPath(p);
+					self._pathStatus = 1;
+				};
 			}
 		);
 
@@ -458,12 +453,14 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 
 	_pixToLatlngPath: function _pixToLatlngPath(path) {
 		var map = this._map;
+		var latlngPath = [];
 		path.forEach(function(pathParticle){
 			var point = map.containerPointToLatLng(L.point(pathParticle.x, pathParticle.y));
-			pathParticle.lng = point.lng;
-			pathParticle.lat = point.lat;
+			// latlngPath.lng = point.lng;
+			// latlngPath.lat = point.lat;
+			latlngPath.push({lng: point.lng, lat: point.lat, velocityType: pathParticle.velocityType});
 		})
-		return path;
+		return latlngPath;
 	},
 
 	_initWindy: function _initWindy(self) {
