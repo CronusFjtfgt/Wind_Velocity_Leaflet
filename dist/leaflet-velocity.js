@@ -273,12 +273,12 @@ L.Control.Velocity = L.Control.extend({
 		this.options.leafletVelocity._windy.stop();
 		this.options.leafletVelocity._clearAndRestart();
 		// ------------------------------------------------------------------------------------------
-		var path = self.path;
-		var pathStatus = self.pathStatus;
-		setInterval(function(){
-			console.log(pathStatus)
-			console.log(path);
-		}, 2000);
+		// var path = self.path;
+		// var pathStatus = self.pathStatus;
+		// setInterval(function(){
+		// 	console.log(pathStatus)
+		// 	console.log(path);
+		// }, 2000);
 	}
 
 });
@@ -391,20 +391,20 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	},
 
 	_startWindy: function _startWindy() {
+		var self_control = this._ControlLayer;
 		var bounds = this._map.getBounds();
 		var size = this._map.getSize();
-		var clickPos = this._ControlLayer.clickPosition;
+		var clickPos = self_control.clickPosition;
 		var clickLnglat2Pix = this._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
-		var path = this._ControlLayer.path;
+		var path = self_control.path;
 		if(path.length !== 0){
 			// console.log(path.length);
 			path.length = 0;
 			pathStatus = 0;
 			// console.log('status:'+pathStatus);
 		}
-		// var comPath = this._ControlLayer.options.path;
-		var comPath = [];
-		var pathStatus = this._ControlLayer.pathStatus;
+		// var comPath = self_control.options.path;
+		var pathStatus = self_control.pathStatus;
 		var pos = [];
 		// pos.x = clickPos.lng;
 		// pos.y = clickPos.lat;
@@ -433,13 +433,9 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 				[bounds._northEast.lng, bounds._northEast.lat]
 			],
 			pos,
-			path,
-			// set_Path
-			function(path){
-				if (path.length !== 0) {
-					// comPath = [];
-					// comPath =  path;
-					// _pathstatus = 1;
+			function(p){
+				if (p.length !== 0) {
+					self_control.path = p
 					pathStatus = 1;
 				}else{
 					pathStatus = 0;
@@ -509,6 +505,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		if (this._timer) clearTimeout(this._timer);
 		if (this._windy) this._windy.stop();
 		if (this._context) this._context.clearRect(0, 0, 3000, 3000);
+		console.log(this._ControlLayer.path);
 		if (this._ControlLayer) this._map.removeControl(this._ControlLayer);
 		this._ControlLayer = null;
 		this._windy = null;
@@ -887,7 +884,7 @@ var Windy = function Windy(params) {
 	};
 
 	var animationLoop;
-	var animate = function animate(grid, bounds, field, pos, path, callback) {
+	var animate = function animate(grid, bounds, field, pos, callback) {
 
 		function windIntensityColorScale(min, max) {
 
@@ -913,7 +910,7 @@ var Windy = function Windy(params) {
 
 		// -----------------------------------------------
 		var pathParticle = [];
-		// var this.path = path;
+		var path = [];
 		// var path = colorStyles.map(function () {
 		// 	return [];
 		// });
@@ -1119,7 +1116,7 @@ var Windy = function Windy(params) {
 		PATH_PIX = path;
 	}
 
-	var start = function start(bounds, width, height, extent, pos, path, callback) {
+	var start = function start(bounds, width, height, extent, pos, callback) {
 
 		var mapBounds = {
 			south: deg2rad(extent[0][1]),
@@ -1129,7 +1126,6 @@ var Windy = function Windy(params) {
 			width: width,
 			height: height
 		};
-		var comPath = [];
 		stop();
 		
 		// build grid
@@ -1138,9 +1134,8 @@ var Windy = function Windy(params) {
 			interpolateField(grid, buildBounds(bounds, width, height), mapBounds, function (grid, bounds, field) {
 				// animate the canvas with random points
 				windy.field = field;
-				animate(grid, bounds, field, pos, path, function (path){
-					comPath = path;
-					callback(comPath);
+				animate(grid, bounds, field, pos, function (path){
+					callback(path);
 				});
 				// animate(grid, bounds, field, pos, path);
 			});
