@@ -394,26 +394,29 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var self = this;
 		var bounds = self._map.getBounds();
 		var size = self._map.getSize();
-		var clickPos = self._ControlLayer.clickPosition;
-		var clickLnglat2Pix = self._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
+
+		var path = self._initPath();
+		// var clickPos = self._ControlLayer.clickPosition;
+		// var clickLnglat2Pix = self._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
 		
-		var path = self._path;
+		// var latLngPath = self._path;
+		// var pixPath = self._latLngToPixPath(self._path);
 		// if(self._pathStatus !== 0){
 		// 	// console.log(path.length);
 		// 	self._path.length = 0;
 		// }
 
-		// var comPath = self._control.options.path;
-		var pathStatus = self._pathsSatus;
-		var pos = [];
-		// pos.x = clickPos.lng;
-		// pos.y = clickPos.lat;
-		pos.x = clickLnglat2Pix.x;
-		pos.y = clickLnglat2Pix.y;
-		pos.lng = clickPos.lng;
-		pos.lat = clickPos.lat;
-		pos.velocityType = self.options.displayOptions.velocityType;
-		console.log(pos);
+		// // var comPath = self._control.options.path;
+		// var pathStatus = self._pathsSatus;
+		// var pos = [];
+		// // pos.x = clickPos.lng;
+		// // pos.y = clickPos.lat;
+		// pos.x = clickLnglat2Pix.x;
+		// pos.y = clickLnglat2Pix.y;
+		// pos.lng = clickPos.lng;
+		// pos.lat = clickPos.lat;
+		// pos.velocityType = self.options.displayOptions.velocityType;
+		// console.log(pos);
 
 		// var set_Path = function setPath(path){
 		// 	comPath = path;
@@ -451,16 +454,46 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 
 	},
 
+	_initPath: function _initPath() {
+		var self = this;
+		var path = [];
+		if (self._pathStatus) {
+			path = self._path; 
+		}else{
+			var clickPos = self._ControlLayer.clickPosition;
+			var clickLnglat2Pix = self._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
+			// pos.x = clickPos.lng;
+			// pos.y = clickPos.lat;
+			path.x = clickLnglat2Pix.x;
+			path.y = clickLnglat2Pix.y;
+			path.lng = clickPos.lng;
+			path.lat = clickPos.lat;
+			path.velocityType = self.options.displayOptions.velocityType;
+			console.log(pos);
+		};
+		return path;
+	}
+
 	_pixToLatlngPath: function _pixToLatlngPath(path) {
 		var map = this._map;
 		var latlngPath = [];
 		path.forEach(function(pathParticle){
-			var point = map.containerPointToLatLng(L.point(pathParticle.x, pathParticle.y));
+			var latLng = map.containerPointToLatLng(L.point(pathParticle.x, pathParticle.y));
 			// latlngPath.lng = point.lng;
 			// latlngPath.lat = point.lat;
-			latlngPath.push({lng: point.lng, lat: point.lat, velocityType: pathParticle.velocityType});
-		})
+			latlngPath.push({lng: latLng.lng, lat: latLng.lat, velocityType: pathParticle.velocityType});
+		});
 		return latlngPath;
+	},
+
+	_latLngToPixPath: function _latLngToPixPath(path) {
+		var map = this._map;
+		var pixPath = [];
+		path.forEach(function(pathParticle){
+			var point = map.latLngToContainerPoint(L.latLng(pathParticle.lat, pathParticle.lng));
+			pixPath.push({x: point.x, y:point.y, velocityType: pathParticle.velocityType });
+		});
+		return pixPath;
 	},
 
 	_initWindy: function _initWindy(self) {
