@@ -175,13 +175,14 @@ L.Control.Velocity = L.Control.extend({
 		angleConvention: 'bearingCW',
 		// Could be 'm/s' for meter per second, 'k/h' for kilometer per hour or 'kt' for knots
 		speedUnit: 'm/s',
-		clickPosition: {
-			lng: -1, lat: -1, x: -1, y: -1
-		},
-		path: null,
 		onAdd: null,
 		onRemove: null
 	},
+	clickPosition: {
+		lng: -1, lat: -1, x: -1, y: -1
+	},
+	path: [],
+	pathStatus: 0,
 
 	onAdd: function onAdd(map) {
 		this._container = L.DomUtil.create('div', 'leaflet-control-velocity');
@@ -265,11 +266,19 @@ L.Control.Velocity = L.Control.extend({
 		
 		// this.options.clickPosition.x = clickPix.x;
 		// this.options.clickPosition.y = clickPix.y;
-		this.options.clickPosition.lng = clickLnglat.lng;
-		this.options.clickPosition.lat = clickLnglat.lat;
+		this.clickPosition.lng = clickLnglat.lng;
+		this.clickPosition.lat = clickLnglat.lat;
+		this.pathStatus = 0;
 		// this.options.path[0] = 
 		this.options.leafletVelocity._windy.stop();
 		this.options.leafletVelocity._clearAndRestart();
+		// ------------------------------------------------------------------------------------------
+		var path = self.path;
+		var pathStatus = self.pathStatus;
+		setInterval(function(){
+			console.log(pathStatus)
+			console.log(path);
+		}, 2000);
 	}
 
 });
@@ -314,8 +323,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_context: null,
 	_timer: 0,
 	_ControlLayer: null,
-	_path: null,
-	_pathstatus: 0,
+	// _path: null,
+	// _pathstatus: 0,
 
 	initialize: function initialize(options) {
 		L.setOptions(this, options);
@@ -384,12 +393,18 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_startWindy: function _startWindy() {
 		var bounds = this._map.getBounds();
 		var size = this._map.getSize();
-		var clickPos = this._ControlLayer.options.clickPosition;
+		var clickPos = this._ControlLayer.clickPosition;
 		var clickLnglat2Pix = this._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
-		var path = [];
+		var path = this._ControlLayer.path;
+		if(path.length !== 0){
+			// console.log(path.length);
+			path.length = 0;
+			pathStatus = 0;
+			// console.log('status:'+pathStatus);
+		}
 		// var comPath = this._ControlLayer.options.path;
 		var comPath = [];
-		var pathStatus = 0;
+		var pathStatus = this._ControlLayer.pathStatus;
 		var pos = [];
 		// pos.x = clickPos.lng;
 		// pos.y = clickPos.lat;
@@ -422,19 +437,23 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			// set_Path
 			function(path){
 				if (path.length !== 0) {
-					comPath = [];
-					comPath =  path;
+					// comPath = [];
+					// comPath =  path;
 					// _pathstatus = 1;
-					console.log('new path');
 					pathStatus = 1;
-				}	
+				}else{
+					pathStatus = 0;
+					// console.log('status:'+pathStatus);
+				}
 			}
 		);
-		setInterval(function(){
-			if(pathStatus === 1){
-				console.log(path);
-			}
-		}, 1000);// loop exec
+
+		// setInterval(function(){
+		// 	if (pathStatus !== 0) {
+		// 		console.log('status:'+pathStatus);
+		// 		console.log(path.length);
+		// 	};
+		// }, 1000);// loop exec
 
 	},
 
