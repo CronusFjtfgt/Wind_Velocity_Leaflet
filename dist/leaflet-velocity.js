@@ -323,7 +323,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_context: null,
 	_timer: 0,
 	_ControlLayer: null,
-	// _path: null,
+	_path: [],
 	// _pathstatus: 0,
 
 	initialize: function initialize(options) {
@@ -391,20 +391,22 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	},
 
 	_startWindy: function _startWindy() {
-		var self_control = this._ControlLayer;
-		var bounds = this._map.getBounds();
-		var size = this._map.getSize();
-		var clickPos = self_control.clickPosition;
-		var clickLnglat2Pix = this._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
-		var path = self_control.path;
-		if(path.length !== 0){
-			// console.log(path.length);
-			path.length = 0;
-			pathStatus = 0;
+		var self = this;
+		var bounds = self._map.getBounds();
+		var size = self._map.getSize();
+		var clickPos = self._ControlLayer.clickPosition;
+		var clickLnglat2Pix = self._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
+		// var path = self._path;
+
+		// if(self._path.length !== 0){
+		// 	// console.log(path.length);
+		// 	self._path.length = 0;
+		// 	pathStatus = 0;
 			// console.log('status:'+pathStatus);
-		}
-		// var comPath = self_control.options.path;
-		var pathStatus = self_control.pathStatus;
+		// }
+		
+		// var comPath = self._control.options.path;
+		var pathStatus = self._ControlLayer.pathStatus;
 		var pos = [];
 		// pos.x = clickPos.lng;
 		// pos.y = clickPos.lat;
@@ -412,7 +414,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		pos.y = clickLnglat2Pix.y;
 		pos.lng = clickPos.lng;
 		pos.lat = clickPos.lat;
-		pos.velocityType = this.options.displayOptions.velocityType;
+		pos.velocityType = self.options.displayOptions.velocityType;
 		console.log(pos);
 
 		// var set_Path = function setPath(path){
@@ -421,7 +423,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		// };
 
 		// bounds, width, height, extent
-		this._windy.start(
+		self._windy.start(
 			[
 				[0, 0],
 				[size.x, size.y]
@@ -435,7 +437,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			pos,
 			function(p){
 				if (p.length !== 0) {
-					self_control.path = p
+					// self_control.path = p
+					self._path = p;
 					pathStatus = 1;
 				}else{
 					pathStatus = 0;
@@ -505,7 +508,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		if (this._timer) clearTimeout(this._timer);
 		if (this._windy) this._windy.stop();
 		if (this._context) this._context.clearRect(0, 0, 3000, 3000);
-		console.log(this._ControlLayer.path);
+		console.log(this._path);
 		if (this._ControlLayer) this._map.removeControl(this._ControlLayer);
 		this._ControlLayer = null;
 		this._windy = null;
