@@ -422,16 +422,17 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			// set_Path
 			function(path){
 				if (path.length !== 0) {
-					// comPath = [];
+					comPath = [];
 					comPath =  path;
 					// _pathstatus = 1;
+					console.log('new path');
 					pathStatus = 1;
 				}	
 			}
 		);
-		setInterval(function(compath){
+		setInterval(function(){
 			if(pathStatus === 1){
-				console.log(comPath);
+				console.log(path);
 			}
 		}, 1000);// loop exec
 
