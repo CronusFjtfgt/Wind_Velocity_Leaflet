@@ -179,14 +179,14 @@ L.Control.Velocity = L.Control.extend({
 		onRemove: null
 	},
 	clickPosition: {
-		lng: -1, lat: -1, x: -1, y: -1
+		lat: -1, lng: -1
 	},
 	path: [],
 	pathStatus: 0,
 
 	onAdd: function onAdd(map) {
 		this._container = L.DomUtil.create('div', 'leaflet-control-velocity');
-		L.DomEvent.disableClickPropagation(this._container);
+		L.DomEvent.disableClickPropagation(this._container);	
 		map.on('mousemove', this._onMouseMove, this);
 		map.on('click', this._onClick, this);
 		this._container.innerHTML = this.options.emptyString;
@@ -247,8 +247,8 @@ L.Control.Velocity = L.Control.extend({
 		var htmlOut = "";
 
 		if (gridValue && !isNaN(gridValue[0]) && !isNaN(gridValue[1]) && gridValue[2]) {
-			htmlOut = "<strong>Lng: " + pos.lng.toFixed(2) + "</strong>" 
-				+ ",<strong> Lat: " + pos.lat.toFixed(2) + "</strong>" 
+			htmlOut = "<strong>Lat: " + pos.lat.toFixed(2) + "</strong>" 
+				+ ",<strong> Lng: " + pos.lng.toFixed(2) + "</strong>" 
 				+ ",<strong> : " + L.point(e.containerPoint.x, e.containerPoint.y) + "</strong>" 
 				+ ",<strong> " + this.options.velocityType + " Direction: </strong>" + self.vectorToDegrees(gridValue[0], gridValue[1], this.options.angleConvention).toFixed(2) + "°" 
 				+ ",<strong> " + this.options.velocityType + " Speed: </strong>" + self.vectorToSpeed(gridValue[0], gridValue[1], this.options.speedUnit).toFixed(2) + this.options.speedUnit;
@@ -264,27 +264,16 @@ L.Control.Velocity = L.Control.extend({
 		var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
 		var clickLnglat = self.options.leafletVelocity._map.containerPointToLatLng(clickPix);
 
-		// self.options.clickPosition.x = clickPix.x;
-		// self.options.clickPosition.y = clickPix.y;
 		self.clickPosition.lng = clickLnglat.lng;
 		self.clickPosition.lat = clickLnglat.lat;
 		self.options.leafletVelocity._pathStatus = 0;
 		self.options.leafletVelocity._pathOverride = 0;
-		
 		if(self.options.leafletVelocity._polyPath){
 			self.options.leafletVelocity._polyPath.remove();
 		}
 		self.options.leafletVelocity._windy.stop();
 		self.options.leafletVelocity._clearAndRestart();
-		// ------------------------------------------------------------------------------------------
-		// var path = self.path;
-		// var pathStatus = self.pathStatus;
-		// setInterval(function(){
-		// 	console.log(pathStatus)
-		// 	console.log(path);
-		// }, 2000);
-	}
-
+	},
 });
 
 L.Map.mergeOptions({
@@ -327,11 +316,12 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_context: null,
 	_timer: 0,
 	_ControlLayer: null,
-	_path: [],
-	_polyPath: null,
+	_path: [], // 记录路径[lat, lng]
+	_inheritPath: [], // 继承上一风层结束点lat,lng
+	_polyPath: null, // 绘线Layer
 	_pathColor: ['#fff', '#000'],
-	_pathsSatus: 0,
-	_pathOverride: 0,
+	_pathsSatus: 0, // 路径完成状态
+	_pathOverride: 0, // 允许重写标记
 
 	initialize: function initialize(options) {
 		L.setOptions(this, options);
@@ -342,8 +332,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		this._canvasLayer = L.canvasLayer().delegate(this);
 		this._canvasLayer.addTo(map);
 		this._map = map;
-		console.log(this._path.length);
-		console.log(this.options.displayOptions.velocityType);
+		console.log('Loading: ' + this.options.displayOptions.velocityType);
 	},
 
 	onRemove: function onRemove(map) {
@@ -359,25 +348,6 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		}
 		this.fire('load');
 	},
-
-	//---------------------terrible methos-------------
-	// pixToLatlng: function pixToLatlng(x, y, _map) {
-	// 	// var latlng = this.velocityType;
-	// 	// return latlng;
-	// 	var map = _map;
-	// 	var latlng = this._map.containerPointToLatLng(L.point(x, y));
-	// 	return [latlng.x, latlng.y];
-	// },
-
-	// latlngToPix: function latlngToPix(lng, lat, _map) {
-	// 	// var latlng = this.velocityType;
-	// 	// // return latlng;
-	// 	var map = _map;
-	// 	var pix = this._map.latLngToContainerPoint(lat, lng);
-	// 	return [pix.lng, pix.lat];
-	// },
-
-	/*---------------- PRIVATE ----------------*/
 
 	onDrawLayer: function onDrawLayer(overlay, params) {
 		var self = this;
@@ -396,6 +366,11 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		this._timer = setTimeout(function () {
 			self._startWindy();
 		}, 500); // showing velocity is delayed
+	},
+	/*---------------- PRIVATE ----------------*/
+
+	getPathstatus: function getPathstatus() {
+		return this.options.displayOptions.velocityType;
 	},
 
 	_startWindy: function _startWindy() {
@@ -468,11 +443,6 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 				// lng: clickPos.lng, lat: clickPos.lat,
 				// velocityType: self.options.displayOptions.velocityType
 			});
-			// path[0].x = clickLnglat2Pix.x;
-			// path[0].y = clickLnglat2Pix.y;
-			// path[0].lng = clickPos.lng;
-			// path[0].lat = clickPos.lat;
-			// path[0].velocityType = self.options.displayOptions.velocityType || 'NONE';
 		};
 		return path;
 	},
@@ -519,6 +489,10 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		this._map.on('resize', self._clearWind);
 
 		this._initMouseHandler();
+	},
+
+	_setInheritPath: function _setInheritPath(lat, lng) {
+
 	},
 
 	_initMouseHandler: function _initMouseHandler() {

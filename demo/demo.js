@@ -59,21 +59,28 @@ var layerControl = mapStuff.layerControl;
 
 // 	layerControl.addOverlay(velocityLayer, 'Wind - Great Barrier Reef');
 // });
+var self = this;
+var velocityLayer_10m;
 $.getJSON('2019050706_10m.json', function (data) {
 
-	var velocityLayer = L.velocityLayer({
+	velocityLayer_10m = L.velocityLayer({
 		displayValues: true,
 		displayOptions: {
-			velocityType: '10m above ground',
+			velocityType: '10m_above_ground',
 			displayPosition: 'bottomleft',
 			displayEmptyString: 'No wind data'
 		},
 		data: data,
 		maxVelocity: 10
 	});
-
-	layerControl.addOverlay(velocityLayer, 'Wind -10m');
+	layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
+	// velocityLayer.addTo(map);
+	// setInterval(function(){
+	// 	console.log(velocityLayer.getPathStatus);
+	// },1000);
 });
+console.log(velocityLayer_10m);
+// layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
 
 // $.getJSON('water-gbr.json', function (data) {
 
