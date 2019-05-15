@@ -263,14 +263,17 @@ L.Control.Velocity = L.Control.extend({
 		var self = this;
 		var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
 		var clickLnglat = self.options.leafletVelocity._map.containerPointToLatLng(clickPix);
-		
+
 		// self.options.clickPosition.x = clickPix.x;
 		// self.options.clickPosition.y = clickPix.y;
 		self.clickPosition.lng = clickLnglat.lng;
 		self.clickPosition.lat = clickLnglat.lat;
 		self.options.leafletVelocity._pathStatus = 0;
 		self.options.leafletVelocity._pathOverride = 0;
-		// self.options.path[0] = 
+		
+		if(self.options.leafletVelocity._polyPath){
+			self.options.leafletVelocity._polyPath.remove();
+		}
 		self.options.leafletVelocity._windy.stop();
 		self.options.leafletVelocity._clearAndRestart();
 		// ------------------------------------------------------------------------------------------
@@ -325,6 +328,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_timer: 0,
 	_ControlLayer: null,
 	_path: [],
+	_polyPath: null,
+	_pathColor: ['#fff', '#000'],
 	_pathsSatus: 0,
 	_pathOverride: 0,
 
@@ -337,6 +342,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		this._canvasLayer = L.canvasLayer().delegate(this);
 		this._canvasLayer.addTo(map);
 		this._map = map;
+		console.log(this._path.length);
 		console.log(this.options.displayOptions.velocityType);
 	},
 
@@ -396,9 +402,23 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var self = this;
 		var bounds = self._map.getBounds();
 		var size = self._map.getSize();
-
 		var path = self._initPath();
 
+		var pathColor;
+		switch(self.options.displayOptions.velocityType){
+			case '10m above ground':
+				pathColor = '#ffeda0';
+				break;
+			case '250mb':
+				pathColor = '#feb24c';
+				break;
+			default:
+				pathColor = '#fff';
+		}
+
+		if (self._pathStatus) {
+			self._polyPath.addTo(self._map);
+		}
 		// bounds, width, height, extent
 		self._windy.start(
 			[
@@ -416,6 +436,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 				if (pathStatus ===1 && self._pathOverride ===0) {
 					// self_control.path = p
 					self._path = self._pixTolatlngPath(path);
+					self._polyPath = L.polyline(self._path, {color: pathColor});
+					self._polyPath.addTo(self._map);
 					self._pathStatus = pathStatus;
 					self._pathOverride = 1;
 				};
@@ -435,16 +457,16 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var self = this;
 		var path = [];
 		if (self._pathStatus) {
-			path = self._latLngToPixPath(self._path);
+			path = self._latLngToPixPath(self._path); //path[x:, y:]
 		}else{
 			var clickPos = self._ControlLayer.clickPosition;
 			var clickLnglat2Pix = self._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
 			// pos.x = clickPos.lng;
 			// pos.y = clickPos.lat;
-			path.push({
+			path.push({     //path[x:, y:]
 				x: clickLnglat2Pix.x, y: clickLnglat2Pix.y,
-				lng: clickPos.lng, lat: clickPos.lat,
-				velocityType: self.options.displayOptions.velocityType
+				// lng: clickPos.lng, lat: clickPos.lat,
+				// velocityType: self.options.displayOptions.velocityType
 			});
 			// path[0].x = clickLnglat2Pix.x;
 			// path[0].y = clickLnglat2Pix.y;
@@ -455,24 +477,26 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		return path;
 	},
 
-	_pixTolatlngPath: function _pixTolatlngPath(path) {
+	_pixTolatlngPath: function _pixTolatlngPath(path) {//latlngPath[lat,lng]
 		var map = this._map;
 		var latlngPath = [];
 		path.forEach(function(pathParticle){
 			var latLng = map.containerPointToLatLng(L.point(pathParticle.x, pathParticle.y));
 			// latlngPath.lng = point.lng;
 			// latlngPath.lat = point.lat;
-			latlngPath.push({lng: latLng.lng, lat: latLng.lat, velocityType: pathParticle.velocityType});
+			// latlngPath.push({lng: latLng.lng, lat: latLng.lat, velocityType: pathParticle.velocityType});
+			latlngPath.push([latLng.lat, latLng.lng]);
 		});
 		return latlngPath;
 	},
 
-	_latLngToPixPath: function _latLngToPixPath(path) {
+	_latLngToPixPath: function _latLngToPixPath(path) {//pixPath[x:, y:]
 		var map = this._map;
 		var pixPath = [];
 		path.forEach(function(pathParticle){
-			var point = map.latLngToContainerPoint(L.latLng(pathParticle.lat, pathParticle.lng));
-			pixPath.push({x: point.x, y:point.y, velocityType: pathParticle.velocityType });
+			var point = map.latLngToContainerPoint(L.latLng(pathParticle[0], pathParticle[1]));
+			// pixPath.push({x: point.x, y:point.y, velocityType: pathParticle.velocityType });
+			pixPath.push({x: point.x, y:point.y});
 		});
 		return pixPath;
 	},
@@ -519,8 +543,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		if (this._timer) clearTimeout(this._timer);
 		if (this._windy) this._windy.stop();
 		if (this._context) this._context.clearRect(0, 0, 3000, 3000);
-		console.log(this._path);
-		
+		console.log(this.options.displayOptions.velocityType + ' length:' + this._path.length);
+		if(this._polyPath) this._map.removeLayer(this._polyPath);
 		if (this._ControlLayer) this._map.removeControl(this._ControlLayer);
 		this._ControlLayer = null;
 		this._windy = null;
@@ -899,7 +923,7 @@ var Windy = function Windy(params) {
 	};
 
 	var animationLoop;
-	var animate = function animate(grid, bounds, field, latlngPath, callback) {
+	var animate = function animate(grid, bounds, field, pixPath, callback) {
 
 		function windIntensityColorScale(min, max) {
 
@@ -924,17 +948,18 @@ var Windy = function Windy(params) {
 		var fadeFillStyle = "rgba(0, 0, 0, 0.97)";
 
 		// -----------------------------------------------
-		var path = latlngPath;
+		var path = pixPath;
 		var pathStatus = 0;	
 		var pathParticle = [];
+		// var visibleParticle = []; //填充像素(弃用)
 		var velocityType = path[0].velocityType;
-		console.log(path.length);
+
 		if (path.length === 1) {
 			pathParticle.x = path[0].x;
 			pathParticle.y = path[0].y;
 		}else{
 			path = evolvePath(path);
-			console.log(path);
+			// console.log(path);
 		};
 		// var path = colorStyles.map(function () {
 		// 	return [];
@@ -1084,6 +1109,24 @@ var Windy = function Windy(params) {
 				}
 			});
 		}
+
+		function drawPath_line(){
+			var preX = path[0].xt;
+			var preY = path[0].yt;
+			g.lineWidth = 2;
+			g.globalCompositeOperation = "lighter";
+			path.forEach(function (pathParticle){
+				g.beginPath();
+				g.strokeStyle = colorStyles[10];
+				g.moveTo(preX, preY);
+				g.lineTo(pathParticle.x, pathParticle.y);
+				g.lineTo(pathParticle.xt, pathParticle.yt);
+				g.stroke();
+				preX = pathParticle.xt;
+				preY = pathParticle.yt;
+			});
+		}
+
 		function drawPath(){
 			g.lineWidth = 2;
 			g.globalCompositeOperation = "lighter";
@@ -1091,7 +1134,7 @@ var Windy = function Windy(params) {
 			path.forEach(function (pathParticle){
 				// console.log(pathParticle);
 				g.beginPath();
-				g.strokeStyle = colorStyles[5];
+				g.strokeStyle = colorStyles[10];
 				g.moveTo(pathParticle.x, pathParticle.y);
 				g.lineTo(pathParticle.xt, pathParticle.yt);
 				g.stroke();		
@@ -1139,8 +1182,10 @@ var Windy = function Windy(params) {
 				evolve();
 				draw();
 				evolveParticle();
-				drawPath();
-				if(pathStatus === 1){
+				if(pathStatus === 0){
+					drawPath();
+					// drawPath_line();
+				}else{
 					callback(path,pathStatus);
 				}
 			}

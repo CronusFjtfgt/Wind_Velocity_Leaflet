@@ -97,7 +97,7 @@ $.getJSON('2019050706.json', function (data) {
 	var velocityLayer = L.velocityLayer({
 		displayValues: true,
 		displayOptions: {
-			velocityType: '10000m above ground',
+			velocityType: '250mb',
 			displayPosition: 'bottomleft',
 			displayEmptyString: 'No wind data'
 		},
