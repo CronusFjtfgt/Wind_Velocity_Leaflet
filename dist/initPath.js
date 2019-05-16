@@ -98,3 +98,22 @@ do{
 }while(m>=0.9)
 
 
+for (var i = 0; i < pathCount; i++) {
+	g.beginPath();
+	// g.strokeStyle = colorStyles[i];
+	g.moveTo(path[i].x, path[i].y);
+	g.lineTo(path[i].xt, path[i].yt);
+	g.stroke();
+	console.log(path[i]);
+}
+pathParticle.x = path[pathCount-1].xt;
+pathParticle.y = path[pathCount-1].yt;
+console.log('-------------------------');
+
+g.beginPath();
+g.strokeStyle = colorStyles[10];
+g.moveTo(pathParticle.x, pathParticle.y);
+g.lineTo(pathParticle.xt, pathParticle.yt);
+pathParticle.x = pathParticle.xt;
+pathParticle.y = pathParticle.yt;
+g.stroke();

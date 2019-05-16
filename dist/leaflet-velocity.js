@@ -178,11 +178,6 @@ L.Control.Velocity = L.Control.extend({
 		onAdd: null,
 		onRemove: null
 	},
-	clickPosition: {
-		lat: -1, lng: -1
-	},
-	path: [],
-	pathStatus: 0,
 
 	onAdd: function onAdd(map) {
 		this._container = L.DomUtil.create('div', 'leaflet-control-velocity');
@@ -260,19 +255,22 @@ L.Control.Velocity = L.Control.extend({
 	},
 
 	_onClick: function _onClick(e) {
-		var self = this;
-		var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
-		var clickLnglat = self.options.leafletVelocity._map.containerPointToLatLng(clickPix);
 
-		self.clickPosition.lng = clickLnglat.lng;
-		self.clickPosition.lat = clickLnglat.lat;
-		self.options.leafletVelocity._pathStatus = 0;
-		self.options.leafletVelocity._pathOverride = 0;
-		if(self.options.leafletVelocity._polyPath){
-			self.options.leafletVelocity._polyPath.remove();
-		}
-		self.options.leafletVelocity._windy.stop();
-		self.options.leafletVelocity._clearAndRestart();
+		var lvLayer = this.options.leafletVelocity
+		if(!lvLayer._allowClick){
+			var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
+			var clickLnglat = lvLayer._map.containerPointToLatLng(clickPix);
+
+			lvLayer.options._clickPosition.lng = clickLnglat.lng;
+			lvLayer.options._clickPosition.lat = clickLnglat.lat;
+			lvLayer._pathStatus = 0;
+			lvLayer._pathOverride = 0;
+			if(lvLayer._polyPath){
+				lvLayer._polyPath.remove();
+			}
+			lvLayer._windy.stop();
+			lvLayer._clearAndRestart();
+		};
 	},
 });
 
@@ -305,9 +303,15 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			position: 'bottomleft',
 			emptyString: 'No velocity data'
 		},
+		test: null,
 		maxVelocity: 10, // used to align color scale
 		colorScale: null,
-		data: null
+		data: null,
+		_path: [], // 记录路径[lat, lng]
+		_clickPosition: {
+			lat: 0, lng: -1
+		},
+		_allowClick: 0,
 	},
 
 	_map: null,
@@ -316,11 +320,16 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_context: null,
 	_timer: 0,
 	_ControlLayer: null,
+
 	_path: [], // 记录路径[lat, lng]
-	_inheritPath: [], // 继承上一风层结束点lat,lng
+	_clickPosition: {
+		lat: 0, lng: -1
+	},
+	_allowClick: 0,
+	
 	_polyPath: null, // 绘线Layer
 	_pathColor: ['#fff', '#000'],
-	_pathsSatus: 0, // 路径完成状态
+	_pathStatus: 0, // 路径完成状态
 	_pathOverride: 0, // 允许重写标记
 
 	initialize: function initialize(options) {
@@ -332,7 +341,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		this._canvasLayer = L.canvasLayer().delegate(this);
 		this._canvasLayer.addTo(map);
 		this._map = map;
-		console.log('Loading: ' + this.options.displayOptions.velocityType);
+		console.log('Loading Layer: ' + this.options.displayOptions.velocityType);
+		console.log(this);
 	},
 
 	onRemove: function onRemove(map) {
@@ -369,9 +379,11 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	},
 	/*---------------- PRIVATE ----------------*/
 
-	getPathstatus: function getPathstatus() {
-		return this.options.displayOptions.velocityType;
+	_getPathEnd: function _getPathEnd() {
+		return this.options._path[this.options._path.length - 1];
 	},
+
+
 
 	_startWindy: function _startWindy() {
 		var self = this;
@@ -410,8 +422,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			function(path, pathStatus){
 				if (pathStatus ===1 && self._pathOverride ===0) {
 					// self_control.path = p
-					self._path = self._pixTolatlngPath(path);
-					self._polyPath = L.polyline(self._path, {color: pathColor});
+					self.options._path = self._pixTolatlngPath(path);
+					self._polyPath = L.polyline(self.options._path, {color: pathColor});
 					self._polyPath.addTo(self._map);
 					self._pathStatus = pathStatus;
 					self._pathOverride = 1;
@@ -432,9 +444,9 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var self = this;
 		var path = [];
 		if (self._pathStatus) {
-			path = self._latLngToPixPath(self._path); //path[x:, y:]
+			path = self._latLngToPixPath(self.options._path); //path[x:, y:]
 		}else{
-			var clickPos = self._ControlLayer.clickPosition;
+			var clickPos = self.options._clickPosition;
 			var clickLnglat2Pix = self._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
 			// pos.x = clickPos.lng;
 			// pos.y = clickPos.lat;
@@ -491,9 +503,9 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		this._initMouseHandler();
 	},
 
-	_setInheritPath: function _setInheritPath(lat, lng) {
+	// _setInheritPath: function _setInheritPath(lat, lng) {
 
-	},
+	// },
 
 	_initMouseHandler: function _initMouseHandler() {
 		if (!this._ControlLayer && this.options.displayValues) {
@@ -517,7 +529,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		if (this._timer) clearTimeout(this._timer);
 		if (this._windy) this._windy.stop();
 		if (this._context) this._context.clearRect(0, 0, 3000, 3000);
-		console.log(this.options.displayOptions.velocityType + ' length:' + this._path.length);
+		console.log(this.options.displayOptions.velocityType + ' length:' + this.options._path.length);
 		if(this._polyPath) this._map.removeLayer(this._polyPath);
 		if (this._ControlLayer) this._map.removeControl(this._ControlLayer);
 		this._ControlLayer = null;
@@ -561,7 +573,7 @@ var Windy = function Windy(params) {
 	var PARTICLE_MULTIPLIER = params.particleMultiplier || 1 / 600; // particle count scalar (completely arbitrary--this values looks nice)
 	var PARTICLE_REDUCTION = Math.pow(window.devicePixelRatio, 1 / 3) || 1.6; // multiply particle count for mobiles by this amount
 	var FRAME_RATE = params.frameRate || 45,
-	    FRAME_TIME = 1000 / FRAME_RATE; // desired frames per second
+		FRAME_TIME = 1000 / FRAME_RATE; // desired frames per second
 	var MIN_VELOCITY_SPEED = 1; // min number of velocity speed
 
 	var defaulColorScale = ["rgb(36,104, 180)", "rgb(60,157, 194)", "rgb(128,205,193 )", "rgb(151,218,168 )", "rgb(198,231,181)", "rgb(238,247,217)", "rgb(255,238,159)", "rgb(252,217,125)", "rgb(255,182,100)", "rgb(252,150,75)", "rgb(250,112,52)", "rgb(245,64,32)", "rgb(237,45,28)", "rgb(220,24,32)", "rgb(180,0,35)"];
@@ -586,9 +598,9 @@ var Windy = function Windy(params) {
 		var rx = 1 - x;
 		var ry = 1 - y;
 		var a = rx * ry,
-		    b = x * ry,
-		    c = rx * y,
-		    d = x * y;
+			b = x * ry,
+			c = rx * y,
+			d = x * y;
 		var u = g00[0] * a + g10[0] * b + g01[0] * c + g11[0] * d;
 		var v = g00[1] * a + g10[1] * b + g01[1] * c + g11[1] * d;
 		var m = Math.sqrt(u * u + v * v);
@@ -598,7 +610,7 @@ var Windy = function Windy(params) {
 
 	var createWindBuilder = function createWindBuilder(uComp, vComp) {
 		var uData = uComp.data,
-		    vData = vComp.data;
+			vData = vComp.data;
 		return {
 			header: uComp.header,
 			//recipe: recipeFor("wind-" + uComp.header.surface1Value),
@@ -611,8 +623,8 @@ var Windy = function Windy(params) {
 
 	var createBuilder = function createBuilder(data) {
 		var uComp = null,
-		    vComp = null,
-		    scalar = null;
+			vComp = null,
+			scalar = null;
 
 		data.forEach(function (record) {
 			switch (record.header.parameterCategory + "," + record.header.parameterNumber) {
@@ -689,9 +701,9 @@ var Windy = function Windy(params) {
 		var j = (φ0 - φ) / Δφ; // calculate latitude index in direction +90 to -90
 
 		var fi = Math.floor(i),
-		    ci = fi + 1;
+			ci = fi + 1;
 		var fj = Math.floor(j),
-		    cj = fj + 1;
+			cj = fj + 1;
 
 		var row;
 		if (row = grid[fj]) {
@@ -867,8 +879,8 @@ var Windy = function Windy(params) {
 				var coord = invert(x, y, extent);
 				if (coord) {
 					var λ = coord[0],
-					    φ = coord[1];
-					    // console.log(λ+','+φ);
+						φ = coord[1];
+						// console.log(λ+','+φ);
 					if (isFinite(λ)) {
 						var wind = grid.interpolate(λ, φ);
 						if (wind) {
@@ -926,7 +938,7 @@ var Windy = function Windy(params) {
 		var pathStatus = 0;	
 		var pathParticle = [];
 		// var visibleParticle = []; //填充像素(弃用)
-		var velocityType = path[0].velocityType;
+		// var velocityType = path[0].velocityType;
 
 		if (path.length === 1) {
 			pathParticle.x = path[0].x;
@@ -980,33 +992,29 @@ var Windy = function Windy(params) {
 				}
 				particle.age += 1;
 			});
-		}
+		};
 		function evolveParticle(){
 			// ------------------------------follow particles------------------------------------------
-			if(pathStatus !== 1){
+			if(pathStatus !== 1 && path[0].x > 0 && path[0].y > 0){
 				var x = pathParticle.x;
 				var y = pathParticle.y;
 				// var latlng = map.containerPointToLatLng(L.latLng(x, y));
 				var v = field(x, y);
 				// var v = grid.interpolate(x, y);
 				var m = v[2];
-				var vtype = velocityType;
+				// var vtype = velocityType;
 				var xt = x + v[0];
 				var yt = y + v[1];
 				var p = [];
-				if (field(xt, yt)[2] >=MIN_VELOCITY_SPEED) {
+				if (field(xt, yt)[2] >=MIN_VELOCITY_SPEED && path.length <500) {
 					p.x = x; p.y = y; p.xt = xt; p.yt = yt;
-					p.velocityType = vtype;
-					// path[pathCount] = p;
+					// p.velocityType = vtype;
 				}else{
-					// console.log('Velocity Slow!')
 					pathStatus = 1;
 					console.log('PATH LENGTH: '+ path.length +' END');
 					return ;
 				}
 				path.push(p);
-				// console.log(p);
-				// console.log(path.length);
 				// pathCount +=1;
 				pathParticle.x = xt;
 				pathParticle.y = yt;
@@ -1023,11 +1031,12 @@ var Windy = function Windy(params) {
 			// 		var v = field(x, y);
 			// 		// var v = grid.interpolate(x, y);
 			// 		var m = v[2];
-			// 		var vtype = pathParticle.velocityType;
+					// var vtype = pathParticle.velocityType;
 			// 		var xt = x + v[0];
 			// 		var yt = y + v[1];
 			// 		var p = [];
-			// 		p.x = x; p.y = y; p.xt = xt; p.yt = yt; p.velocityType = vtype;
+					// p.x = x; p.y = y; p.xt = xt; p.yt = yt;
+					// p.velocityType = vtype;
 			// 		path.push(p);
 			// 		// console.log(p);
 			// 		pathCount +=1;
@@ -1036,7 +1045,7 @@ var Windy = function Windy(params) {
 			// 	}while(field(xt, yt)[2] >= MIN_VELOCITY_SPEED)
 			// 	pathStatus = 1;
 			// }
-		}
+		};
 		function evolvePath(latlngPath){
 			var path = []
 			latlngPath.forEach(function(pathParticle){
@@ -1044,15 +1053,16 @@ var Windy = function Windy(params) {
 				var y = pathParticle.y;
 				var v = field(x, y);
 				var m = v[2];
-				var vtype = velocityType;
+				// var vtype = velocityType;
 				var xt = x + v[0];
 				var yt = y + v[1];
 				path.push({
-					x: x, y: y, xt: xt, yt: yt, velocityType: velocityType
+					x: x, y: y, xt: xt, yt: yt
+					// , velocityType: velocityType
 				});
 			});
 			return path;
-		}
+		};
 
 		var g = params.canvas.getContext("2d");
 		g.lineWidth = PARTICLE_LINE_WIDTH;
@@ -1082,9 +1092,9 @@ var Windy = function Windy(params) {
 					g.stroke();
 				}
 			});
-		}
+		};
 
-		function drawPath_line(){
+		function drawPath_line(){ // 路径连续,缩放后不会出现断点
 			var preX = path[0].xt;
 			var preY = path[0].yt;
 			g.lineWidth = 2;
@@ -1099,7 +1109,7 @@ var Windy = function Windy(params) {
 				preX = pathParticle.xt;
 				preY = pathParticle.yt;
 			});
-		}
+		};
 
 		function drawPath(){
 			g.lineWidth = 2;
@@ -1119,32 +1129,7 @@ var Windy = function Windy(params) {
 				// 	// console.log('null');
 				// }
 			});
-			// console.log(path);
-			// console.log('---------------------------------------------------');
-			
-			// pathCount +=1;
-			// console.log(path);
-
-			// for (var i = 0; i < pathCount; i++) {
-			// 	g.beginPath();
-			// 	// g.strokeStyle = colorStyles[i];
-			// 	g.moveTo(path[i].x, path[i].y);
-			// 	g.lineTo(path[i].xt, path[i].yt);
-			// 	g.stroke();
-			// 	console.log(path[i]);
-			// }
-			// pathParticle.x = path[pathCount-1].xt;
-			// pathParticle.y = path[pathCount-1].yt;
-			// console.log('-------------------------');
-
-			// g.beginPath();
-			// g.strokeStyle = colorStyles[10];
-			// g.moveTo(pathParticle.x, pathParticle.y);
-			// g.lineTo(pathParticle.xt, pathParticle.yt);
-			// pathParticle.x = pathParticle.xt;
-			// pathParticle.y = pathParticle.yt;
-			// g.stroke();
-		}
+		};
 
 		var then = Date.now();
 		(function frame() {
@@ -1168,7 +1153,7 @@ var Windy = function Windy(params) {
 
 	var setPath = function setPath(path) {
 		PATH_PIX = path;
-	}
+	};
 
 	var start = function start(bounds, width, height, extent, path, callback) {
 

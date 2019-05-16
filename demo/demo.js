@@ -39,81 +39,78 @@ function initDemoMap(){
 }
 
 // demo map
+var self = this;
 var mapStuff = initDemoMap();
 var map = mapStuff.map;
 var layerControl = mapStuff.layerControl;
-
-// load data (u, v grids) from somewhere (e.g. https://github.com/danwild/wind-js-server)
-// $.getJSON('wind-gbr.json', function (data) {
-
-// 	var velocityLayer = L.velocityLayer({
-// 		displayValues: true,
-// 		displayOptions: {
-// 			velocityType: 'GBR Wind',
-// 			displayPosition: 'bottomleft',
-// 			displayEmptyString: 'No wind data'
-// 		},
-// 		data: data,
-// 		maxVelocity: 10
-// 	});
-
-// 	layerControl.addOverlay(velocityLayer, 'Wind - Great Barrier Reef');
-// });
-var self = this;
 var velocityLayer_10m;
-$.getJSON('2019050706_10m.json', function (data) {
-
-	velocityLayer_10m = L.velocityLayer({
-		displayValues: true,
-		displayOptions: {
-			velocityType: '10m_above_ground',
-			displayPosition: 'bottomleft',
-			displayEmptyString: 'No wind data'
-		},
-		data: data,
-		maxVelocity: 10
+var velocityLayer_250mb;
+// var WIND_DATA = {
+// 	10m_above_ground: '2019050706_10m.json',
+// 	250mb: '2019050706.json'
+// };
+// var WIND_LAYER = {
+// 	10m_above_ground: velocityLayer_10m,
+// 	250mb: velocityLayer_250mb
+// }
+var p;
+var ps;
+var initWind = function(){
+	// load data (u, v grids) from somewhere (e.g. https://github.com/danwild/wind-js-server)
+	
+	$.getJSON('2019050706_10m.json', function (data) {
+		self.velocityLayer_10m = L.velocityLayer({
+			displayValues: true,
+			displayOptions: {
+				velocityType: '10m_above_ground',
+				displayPosition: 'bottomleft',
+				displayEmptyString: 'No wind data'
+			},
+			data: data,
+			maxVelocity: 10
+		});
+		console.log(self.velocityLayer_10m)
+		layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
+		// velocityLayer_10m.addTo(self.map);
 	});
-	layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
-	// velocityLayer.addTo(map);
-	// setInterval(function(){
-	// 	console.log(velocityLayer.getPathStatus);
-	// },1000);
-});
-console.log(velocityLayer_10m);
-// layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
+	$.getJSON('2019050706.json', function (data) {
 
-// $.getJSON('water-gbr.json', function (data) {
-
-// 	var velocityLayer = L.velocityLayer({
-// 		displayValues: true,
-// 		displayOptions: {
-// 			velocityType: 'GBR Water',
-// 			displayPosition: 'bottomleft',
-// 			displayEmptyString: 'No water data'
-// 		},
-// 		data: data,
-// 		maxVelocity: 0.6,
-// 		velocityScale: 0.1 // arbitrary default 0.005
-// 	});
-
-// 	layerControl.addOverlay(velocityLayer, 'Ocean Current - Great Barrier Reef');
-// });
-
-$.getJSON('2019050706.json', function (data) {
-
-	var velocityLayer = L.velocityLayer({
-		displayValues: true,
-		displayOptions: {
-			velocityType: '250mb',
-			displayPosition: 'bottomleft',
-			displayEmptyString: 'No wind data'
-		},
-		data: data,
-		maxVelocity: 15
+		self.velocityLayer_250mb = L.velocityLayer({
+			displayValues: true,
+			displayOptions: {
+				velocityType: '250mb',
+				displayPosition: 'bottomleft',
+				displayEmptyString: 'No wind data'
+			},
+			data: data,
+			maxVelocity: 15
+		});
+		layerControl.addOverlay(velocityLayer_250mb, 'Wind -250mb');
 	});
 
-	layerControl.addOverlay(velocityLayer, 'Wind -250mb');
-});
+};
+var switchLayer = function(point, nextLayer){
+	console.log(nextLayer);
+	nextLayer.options.test = 1;
+	nextLayer.options._clickPostion.lat = point[0];
+	nextLayer.options._clickPostion.lng = point[1];
+	nextLayer.options._allowClick = 1;
+	console.log(nextLayer);
+	nextLayer.addTo(self.map);
+}
+var timer_10m = setInterval(function(){
+	var status = velocityLayer_10m._pathStatus;
+	var point = velocityLayer_10m._getPathEnd();
+	// ps = velocityLayer_10m._path;
+	if(status){
+		console.log('Last Point: ' + point);
+		clearInterval(timer_10m);
+		console.log('timer clear');
+		switchLayer(point, self.velocityLayer_250mb);
+	};
+},2000);
+
+initWind();
 
 
 
