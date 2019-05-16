@@ -69,6 +69,7 @@ var initWind = function(){
 			data: data,
 			maxVelocity: 10
 		});
+		self.velocityLayer_10m.options.maxVelocity = 100;
 		layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
 		// velocityLayer_10m.addTo(self.map);
 	});
