@@ -257,7 +257,8 @@ L.Control.Velocity = L.Control.extend({
 	_onClick: function _onClick(e) {
 
 		var lvLayer = this.options.leafletVelocity
-		if(!lvLayer._allowClick){
+		if(!lvLayer.options._allowClick){
+			console.log(lvLayer.options._allowClick);
 			var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
 			var clickLnglat = lvLayer._map.containerPointToLatLng(clickPix);
 
@@ -303,15 +304,14 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			position: 'bottomleft',
 			emptyString: 'No velocity data'
 		},
-		test: null,
 		maxVelocity: 10, // used to align color scale
 		colorScale: null,
 		data: null,
 		_path: [], // 记录路径[lat, lng]
+		_allowClick: 0,
 		_clickPosition: {
 			lat: 0, lng: -1
 		},
-		_allowClick: 0,
 	},
 
 	_map: null,
@@ -321,12 +321,12 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_timer: 0,
 	_ControlLayer: null,
 
-	_path: [], // 记录路径[lat, lng]
-	_clickPosition: {
-		lat: 0, lng: -1
-	},
-	_allowClick: 0,
-	
+	// _path: [], // 记录路径[lat, lng]
+	// _clickPosition: {
+	// 	lat: 0, lng: -1
+	// },
+	// _allowClick: 0,
+
 	_polyPath: null, // 绘线Layer
 	_pathColor: ['#fff', '#000'],
 	_pathStatus: 0, // 路径完成状态
@@ -390,6 +390,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var bounds = self._map.getBounds();
 		var size = self._map.getSize();
 		var path = self._initPath();
+		console.log(path);
 
 		var pathColor;
 		switch(self.options.displayOptions.velocityType){

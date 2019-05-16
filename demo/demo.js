@@ -69,7 +69,6 @@ var initWind = function(){
 			data: data,
 			maxVelocity: 10
 		});
-		console.log(self.velocityLayer_10m)
 		layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
 		// velocityLayer_10m.addTo(self.map);
 	});
@@ -90,11 +89,11 @@ var initWind = function(){
 
 };
 var switchLayer = function(point, nextLayer){
-	console.log(nextLayer);
-	nextLayer.options.test = 1;
-	nextLayer.options._clickPostion.lat = point[0];
-	nextLayer.options._clickPostion.lng = point[1];
+
 	nextLayer.options._allowClick = 1;
+	nextLayer.options._clickPostion = {lat: point[0], lng: point[1]};
+	// nextLayer.options.clickPostion.lat = point[0];
+	// nextLayer.options.clickPostion.lng = point[1];
 	console.log(nextLayer);
 	nextLayer.addTo(self.map);
 }
