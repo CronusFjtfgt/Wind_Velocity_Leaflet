@@ -256,14 +256,13 @@ L.Control.Velocity = L.Control.extend({
 
 	_onClick: function _onClick(e) {
 
-		var lvLayer = this.options.leafletVelocity
-		if(!lvLayer.options._allowClick){
-			console.log(lvLayer.options._allowClick);
+		var lvLayer = this.options.leafletVelocity;
+		if(lvLayer._allowClick){
 			var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
 			var clickLnglat = lvLayer._map.containerPointToLatLng(clickPix);
-
-			lvLayer.options._clickPosition.lng = clickLnglat.lng;
-			lvLayer.options._clickPosition.lat = clickLnglat.lat;
+			var pop = lvLayer.openPopup(clickLnglat);
+			lvLayer._clickPosition.lng = clickLnglat.lng;
+			lvLayer._clickPosition.lat = clickLnglat.lat;
 			lvLayer._pathStatus = 0;
 			lvLayer._pathOverride = 0;
 			if(lvLayer._polyPath){
@@ -307,11 +306,11 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		maxVelocity: 10, // used to align color scale
 		colorScale: null,
 		data: null,
-		_path: [], // 记录路径[lat, lng]
-		_allowClick: 0,
-		_clickPosition: {
-			lat: 0, lng: -1
-		},
+		// _path: [], // 记录路径[lat, lng]
+		// _allowClick: 0,
+		// _clickPosition: {
+		// 	lat: 0, lng: -1
+		// },
 	},
 
 	_map: null,
@@ -321,11 +320,11 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 	_timer: 0,
 	_ControlLayer: null,
 
-	// _path: [], // 记录路径[lat, lng]
-	// _clickPosition: {
-	// 	lat: 0, lng: -1
-	// },
-	// _allowClick: 0,
+	_path: [], // 记录路径[lat, lng]
+	_clickPosition: {
+		lat: 0, lng: -1
+	},
+	_allowClick: 0,
 
 	_polyPath: null, // 绘线Layer
 	_pathColor: ['#fff', '#000'],
@@ -342,7 +341,6 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		this._canvasLayer.addTo(map);
 		this._map = map;
 		console.log('Loading Layer: ' + this.options.displayOptions.velocityType);
-		console.log(this);
 	},
 
 	onRemove: function onRemove(map) {
@@ -377,10 +375,17 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			self._startWindy();
 		}, 500); // showing velocity is delayed
 	},
+	setPath: function setPath(point) {
+		this._clickPosition.lat = point[0];
+		this._clickPosition.lng = point[1];
+		this._allowClick = 1;
+		console.log(point);
+		this._startWindy();
+	},
 	/*---------------- PRIVATE ----------------*/
 
 	_getPathEnd: function _getPathEnd() {
-		return this.options._path[this.options._path.length - 1];
+		return this._path[this._path.length - 1];
 	},
 
 
@@ -423,8 +428,8 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 			function(path, pathStatus){
 				if (pathStatus ===1 && self._pathOverride ===0) {
 					// self_control.path = p
-					self.options._path = self._pixTolatlngPath(path);
-					self._polyPath = L.polyline(self.options._path, {color: pathColor});
+					self._path = self._pixTolatlngPath(path);
+					self._polyPath = L.polyline(self._path, {color: pathColor});
 					self._polyPath.addTo(self._map);
 					self._pathStatus = pathStatus;
 					self._pathOverride = 1;
@@ -445,9 +450,9 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var self = this;
 		var path = [];
 		if (self._pathStatus) {
-			path = self._latLngToPixPath(self.options._path); //path[x:, y:]
+			path = self._latLngToPixPath(self._path); //path[x:, y:]
 		}else{
-			var clickPos = self.options._clickPosition;
+			var clickPos = self._clickPosition;
 			var clickLnglat2Pix = self._map.latLngToContainerPoint(L.latLng(clickPos.lat, clickPos.lng));
 			// pos.x = clickPos.lng;
 			// pos.y = clickPos.lat;
@@ -530,7 +535,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		if (this._timer) clearTimeout(this._timer);
 		if (this._windy) this._windy.stop();
 		if (this._context) this._context.clearRect(0, 0, 3000, 3000);
-		console.log(this.options.displayOptions.velocityType + ' length:' + this.options._path.length);
+		console.log(this.options.displayOptions.velocityType + ' length:' + this._path.length);
 		if(this._polyPath) this._map.removeLayer(this._polyPath);
 		if (this._ControlLayer) this._map.removeControl(this._ControlLayer);
 		this._ControlLayer = null;

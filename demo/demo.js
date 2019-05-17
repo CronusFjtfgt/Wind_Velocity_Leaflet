@@ -69,7 +69,7 @@ var initWind = function(){
 			data: data,
 			maxVelocity: 10
 		});
-		self.velocityLayer_10m.options.maxVelocity = 100;
+
 		layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
 		// velocityLayer_10m.addTo(self.map);
 	});
@@ -85,18 +85,15 @@ var initWind = function(){
 			data: data,
 			maxVelocity: 15
 		});
+
 		layerControl.addOverlay(velocityLayer_250mb, 'Wind -250mb');
 	});
 
 };
 var switchLayer = function(point, nextLayer){
-
-	nextLayer.options._allowClick = 1;
-	nextLayer.options._clickPostion = {lat: point[0], lng: point[1]};
-	// nextLayer.options.clickPostion.lat = point[0];
-	// nextLayer.options.clickPostion.lng = point[1];
-	console.log(nextLayer);
+	
 	nextLayer.addTo(self.map);
+	nextLayer.setPath(point);
 }
 var timer_10m = setInterval(function(){
 	var status = velocityLayer_10m._pathStatus;
