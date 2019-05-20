@@ -257,10 +257,10 @@ L.Control.Velocity = L.Control.extend({
 	_onClick: function _onClick(e) {
 
 		var lvLayer = this.options.leafletVelocity;
-		if(lvLayer._allowClick){
+		if(!lvLayer._allowClick){
 			var clickPix = L.point(e.containerPoint.x, e.containerPoint.y);
 			var clickLnglat = lvLayer._map.containerPointToLatLng(clickPix);
-			var pop = lvLayer.openPopup(clickLnglat);
+			
 			lvLayer._clickPosition.lng = clickLnglat.lng;
 			lvLayer._clickPosition.lat = clickLnglat.lat;
 			lvLayer._pathStatus = 0;

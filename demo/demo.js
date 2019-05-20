@@ -71,7 +71,7 @@ var initWind = function(){
 		});
 
 		layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
-		// velocityLayer_10m.addTo(self.map);
+		velocityLayer_10m.addTo(self.map);
 	});
 	$.getJSON('2019050706.json', function (data) {
 
