@@ -87,6 +87,7 @@ var initWind = function(){
 		});
 
 		layerControl.addOverlay(velocityLayer_250mb, 'Wind -250mb');
+		// velocityLayer_250mb.addTo(self.map)
 	});
 
 };

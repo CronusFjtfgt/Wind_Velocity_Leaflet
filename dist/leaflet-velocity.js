@@ -535,7 +535,10 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		if (this._timer) clearTimeout(this._timer);
 		if (this._windy) this._windy.stop();
 		if (this._context) this._context.clearRect(0, 0, 3000, 3000);
+		
 		console.log(this.options.displayOptions.velocityType + ' length:' + this._path.length);
+		console.log('path: ' + this._path)
+		
 		if(this._polyPath) this._map.removeLayer(this._polyPath);
 		if (this._ControlLayer) this._map.removeControl(this._ControlLayer);
 		this._ControlLayer = null;
