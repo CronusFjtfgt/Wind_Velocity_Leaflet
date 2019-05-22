@@ -322,7 +322,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 
 	_path: [], // 记录路径[lat, lng]
 	_clickPosition: {
-		lat: 0, lng: -1
+		lat: 39, lng: 112
 	},
 	_allowClick: 0,
 
@@ -767,6 +767,7 @@ var Windy = function Windy(params) {
 	var distort = function distort(projection, λ, φ, x, y, scale, wind, windy) {
 		var u = wind[0] * scale;
 		var v = wind[1] * scale;
+
 		var d = distortion(projection, λ, φ, x, y, windy);
 
 		// Scale distortion vectors by u and v, then add.
@@ -787,7 +788,12 @@ var Windy = function Windy(params) {
 		// Meridian scale factor (see Snyder, equation 4-3), where R = 1. This handles issue where length of 1º λ
 		// changes depending on φ. Without this, there is a pinching effect at the poles.
 		var k = Math.cos(φ / 360 * τ);
-		return [(pλ[0] - x) / hλ / k, (pλ[1] - y) / hλ / k, (pφ[0] - x) / hφ, (pφ[1] - y) / hφ];
+		return [
+			(pλ[0] - x) / hλ / k,
+			(pλ[1] - y) / hλ / k,
+			(pφ[0] - x) / hφ,
+			(pφ[1] - y) / hφ
+		];
 	};
 
 	var createField = function createField(grid, columns, bounds, callback) {
@@ -796,6 +802,7 @@ var Windy = function Windy(params) {
    * @returns {Array} wind vector [u, v, magnitude] at the point (x, y), or [NaN, NaN, null] if wind
    *          is undefined at that point.
    */
+		// console.log(columns)
 		function field(x, y) {
 			var column = columns[Math.round(x)];
 			return column && column[Math.round(y)] || NULL_WIND_VECTOR;
@@ -861,6 +868,7 @@ var Windy = function Windy(params) {
 	};
 
 	var project = function project(lat, lon, windy) {
+		// [lat,lng]转换为墨卡托投影在屏幕上的[x,y]
 		// both in radians, use deg2rad if neccessary
 		var ymin = mercY(windy.south);
 		var ymax = mercY(windy.north);
@@ -877,8 +885,10 @@ var Windy = function Windy(params) {
 
 		var projection = {};
 		var mapArea = (extent.south - extent.north) * (extent.west - extent.east);
+		console.log(mapArea)
+		console.log(VELOCITY_SCALE)
 		var velocityScale = VELOCITY_SCALE * Math.pow(mapArea, 0.4);
-
+		console.log(velocityScale)
 		var columns = [];
 		var x = bounds.x;
 
@@ -1165,7 +1175,7 @@ var Windy = function Windy(params) {
 	};
 
 	var start = function start(bounds, width, height, extent, path, callback) {
-
+		console.log(extent)
 		var mapBounds = {
 			south: deg2rad(extent[0][1]),
 			north: deg2rad(extent[1][1]),
