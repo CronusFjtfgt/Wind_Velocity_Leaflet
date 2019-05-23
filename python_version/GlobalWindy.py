@@ -19,7 +19,7 @@ class GlobalWindy:
     GRID = {}
     WINDY = {}
     start = [39, 112]
-    destiny = [50, 200]
+    destiny = [34, 261.39]
 
     def __init__(self):
         for i in range(len(self.data_name)):
@@ -41,6 +41,8 @@ class GlobalWindy:
         layer_numb = self.data_type.index(layerType)
         if(layer_numb == 0):
             nextLayer = layer_numb + 1
+        elif(layer_numb == len(self.data_type) - 1):
+            nextLayer = layer_numb - 1
         else:
             nextLayer = layer_numb + random.choice([-1, 1])
         return self.data_type[nextLayer]
@@ -48,20 +50,42 @@ class GlobalWindy:
     def searchPath(self, start, destiny, type, distance):
         Windy = self.WINDY[type]
         Path = Windy.evolvePath(start[0], start[1], destiny[0], destiny[1])
-        if(Path['closePoint'] == [] or Path['closePoint'][3] == distance):
-            return float('inf')
-        elif(Path['closePoint'][3] < 2):
-            return Path['closePoint'][3]
+        closePoint = Path['closePoint']
+        if(closePoint == [] or closePoint[3] == distance):
+            # print start,'Path End'
+            return {
+                'path': [[-1, -1, -1]],
+                'distance': float('inf')
+            }
+        elif(closePoint[3] < 2):
+            # print 'Path Complete'
+            return {
+                'path': Path['path'][: closePoint[2] + 1],
+                'distance': closePoint[3]
+            }
         else:
+            sPath = []
+            path = []
             dis = []
-            Selected = Windy.searchZone(Path['path'], Path['closePoint'], 2)
-            for point in Selected:
-                print type,' point:',point
-                dis.append(
+            Selected = Windy.searchZone(Path['path'], closePoint, 2)
+            for i in range(len(Selected)):
+                # print type,' point:',Selected[i]
+                sPath.insert(
+                    i,
                     self.searchPath(
-                        point, destiny, self.switchLayer(type),
-                        Windy.distance(point[0], point[1], destiny[0], destiny[1])
+                        Selected[i], destiny, self.switchLayer(type),
+                        Windy.distance(Selected[i][0], Selected[i][1], destiny[0], destiny[1])
                     )
                 )
-            return min(dis)
+                dis.insert(i, sPath[i]['distance'])
+                path.insert(i, sPath[i]['path'])
+            short_path = path[dis.index(min(dis))]
+            # print 'shortPath: ',short_path
+            if(-1 not in short_path[0]):
+                print type
+                Path['path'].extend(short_path)
+            return {
+                'path': Path['path'],
+                'distance': min(dis)
+            }
 

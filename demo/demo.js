@@ -55,10 +55,11 @@ var velocityLayer_250mb;
 // }
 var p;
 var ps;
+var data_path = '../JSON/'
 var initWind = function(){
 	// load data (u, v grids) from somewhere (e.g. https://github.com/danwild/wind-js-server)
 	
-	$.getJSON('../DATA/2019052218_10m.json', function (data) {
+	$.getJSON(data_path + '2019052218_10m.json', function (data) {
 		self.velocityLayer_10m = L.velocityLayer({
 			displayValues: true,
 			displayOptions: {
@@ -71,9 +72,9 @@ var initWind = function(){
 		});
 
 		layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
-		// velocityLayer_10m.addTo(self.map);
+		velocityLayer_10m.addTo(self.map);
 	});
-	$.getJSON('../DATA/2019052218_100m.json', function (data) {
+	$.getJSON(data_path + '2019052218_100m.json', function (data) {
 
 		self.velocityLayer_250mb = L.velocityLayer({
 			displayValues: true,
@@ -89,7 +90,7 @@ var initWind = function(){
 		layerControl.addOverlay(velocityLayer_250mb, 'Wind -100m');
 		// velocityLayer_250mb.addTo(self.map)
 	});
-	$.getJSON('../DATA/2019052218_50mb.json', function (data) {
+	$.getJSON(data_path + '2019052218_50mb.json', function (data) {
 
 		self.velocityLayer_250mb = L.velocityLayer({
 			displayValues: true,
@@ -105,7 +106,7 @@ var initWind = function(){
 		layerControl.addOverlay(velocityLayer_250mb, 'Wind -50mb');
 		// velocityLayer_250mb.addTo(self.map)
 	});
-	$.getJSON('../DATA/2019052218_100mb.json', function (data) {
+	$.getJSON(data_path + '2019052218_100mb.json', function (data) {
 
 		self.velocityLayer_250mb = L.velocityLayer({
 			displayValues: true,
@@ -121,7 +122,7 @@ var initWind = function(){
 		layerControl.addOverlay(velocityLayer_250mb, 'Wind -100mb');
 		// velocityLayer_250mb.addTo(self.map)
 	});
-	$.getJSON('../DATA/2019052218_200mb.json', function (data) {
+	$.getJSON(data_path + '2019052218_200mb.json', function (data) {
 
 		self.velocityLayer_250mb = L.velocityLayer({
 			displayValues: true,
@@ -137,7 +138,7 @@ var initWind = function(){
 		layerControl.addOverlay(velocityLayer_250mb, 'Wind -200mb');
 		// velocityLayer_250mb.addTo(self.map)
 	});
-	$.getJSON('../DATA/2019052218_250mb.json', function (data) {
+	$.getJSON(data_path + '2019052218_250mb.json', function (data) {
 
 		self.velocityLayer_250mb = L.velocityLayer({
 			displayValues: true,
@@ -160,17 +161,17 @@ var switchLayer = function(point, nextLayer){
 	nextLayer.addTo(self.map);
 	nextLayer.setPath(point);
 }
-var timer_10m = setInterval(function(){
-	var status = velocityLayer_10m._pathStatus;
-	var point = velocityLayer_10m._getPathEnd();
-	// ps = velocityLayer_10m._path;
-	if(status){
-		console.log('Last Point: ' + point);
-		clearInterval(timer_10m);
-		console.log('timer clear');
-		switchLayer(point, self.velocityLayer_250mb);
-	};
-},2000);
+// var timer_10m = setInterval(function(){
+// 	var status = velocityLayer_10m._pathStatus;
+// 	var point = velocityLayer_10m._getPathEnd();
+// 	// ps = velocityLayer_10m._path;
+// 	if(status){
+// 		console.log('Last Point: ' + point);
+// 		clearInterval(timer_10m);
+// 		console.log('timer clear');
+// 		switchLayer(point, self.velocityLayer_250mb);
+// 	};
+// },2000);
 
 initWind();
 
