@@ -58,7 +58,7 @@ var ps;
 var initWind = function(){
 	// load data (u, v grids) from somewhere (e.g. https://github.com/danwild/wind-js-server)
 	
-	$.getJSON('2019050706_10m.json', function (data) {
+	$.getJSON('../DATA/2019052218_10m.json', function (data) {
 		self.velocityLayer_10m = L.velocityLayer({
 			displayValues: true,
 			displayOptions: {
@@ -73,7 +73,71 @@ var initWind = function(){
 		layerControl.addOverlay(velocityLayer_10m, 'Wind -10m');
 		// velocityLayer_10m.addTo(self.map);
 	});
-	$.getJSON('2019050706.json', function (data) {
+	$.getJSON('../DATA/2019052218_100m.json', function (data) {
+
+		self.velocityLayer_250mb = L.velocityLayer({
+			displayValues: true,
+			displayOptions: {
+				velocityType: '100m',
+				displayPosition: 'bottomleft',
+				displayEmptyString: 'No wind data'
+			},
+			data: data,
+			maxVelocity: 15
+		});
+
+		layerControl.addOverlay(velocityLayer_250mb, 'Wind -100m');
+		// velocityLayer_250mb.addTo(self.map)
+	});
+	$.getJSON('../DATA/2019052218_50mb.json', function (data) {
+
+		self.velocityLayer_250mb = L.velocityLayer({
+			displayValues: true,
+			displayOptions: {
+				velocityType: '50mb',
+				displayPosition: 'bottomleft',
+				displayEmptyString: 'No wind data'
+			},
+			data: data,
+			maxVelocity: 15
+		});
+
+		layerControl.addOverlay(velocityLayer_250mb, 'Wind -50mb');
+		// velocityLayer_250mb.addTo(self.map)
+	});
+	$.getJSON('../DATA/2019052218_100mb.json', function (data) {
+
+		self.velocityLayer_250mb = L.velocityLayer({
+			displayValues: true,
+			displayOptions: {
+				velocityType: '100mb',
+				displayPosition: 'bottomleft',
+				displayEmptyString: 'No wind data'
+			},
+			data: data,
+			maxVelocity: 15
+		});
+
+		layerControl.addOverlay(velocityLayer_250mb, 'Wind -100mb');
+		// velocityLayer_250mb.addTo(self.map)
+	});
+	$.getJSON('../DATA/2019052218_200mb.json', function (data) {
+
+		self.velocityLayer_250mb = L.velocityLayer({
+			displayValues: true,
+			displayOptions: {
+				velocityType: '200mb',
+				displayPosition: 'bottomleft',
+				displayEmptyString: 'No wind data'
+			},
+			data: data,
+			maxVelocity: 15
+		});
+
+		layerControl.addOverlay(velocityLayer_250mb, 'Wind -200mb');
+		// velocityLayer_250mb.addTo(self.map)
+	});
+	$.getJSON('../DATA/2019052218_250mb.json', function (data) {
 
 		self.velocityLayer_250mb = L.velocityLayer({
 			displayValues: true,
@@ -87,7 +151,7 @@ var initWind = function(){
 		});
 
 		layerControl.addOverlay(velocityLayer_250mb, 'Wind -250mb');
-		velocityLayer_250mb.addTo(self.map)
+		// velocityLayer_250mb.addTo(self.map)
 	});
 
 };

@@ -2,29 +2,28 @@
 
 import json
 import math
+import random
 
 class Windy:
     '单风层数据类'
 
     MIN_VELOCITY_SPEED = 0.2 # m/s
     EVOLVE_STEP = 500 # path step limit
-    MIN_SEARCH_ZONE = 0.5 # degree
-    MAX_SEARCH_ZONE = 5 # degree
-    SCALE = 2000 # velocity keep frame
+    SEARCH_ZONE = 4.5 # degree
+    # MAX_SEARCH_ZONE = 5 # degree
+    SCALE = 30*60 # velocity keep time 30min = 30*60 sec
     Data = []
     Builder = [] # one wind grid
     Grid = [] # all grid
     Path = {} # all layers path
     lo1 = la1 = dy = dx = nx = ny = 0
 
-    def __init__(self,DATA):
+    def __init__(self, DATA):
         self.Data = DATA
         self.Grid = self.__buildGrid(self.Data)
-        # wind = self.evolvePath(39, 112, self.GRID['2019050706_10m.json'], 50, 200)
-        # wind = self.__field(39.00000876234756, 112.00025601980208, grid_250mb)
 
     '======================================== PRIVATE ==============================='
-    def __createBuilder(self,data):
+    def __createBuilder(self, data):
         uComp = vComp = scalar = {}
         for record in data:
             parCategory = str(record['header']['parameterCategory'])
@@ -59,7 +58,7 @@ class Windy:
         m = math.sqrt(u * u + v * v)
         return [u, v, m]
 
-    def __buildGrid(self,data):
+    def __buildGrid(self, data):
         builder = self.__createBuilder(data)
         header = builder['header']
         self.lo1 = header['lo1']
@@ -132,11 +131,21 @@ class Windy:
         dLng = (disX / (degree * math.cos(self.deg2rad(lat)))) * self.SCALE + lng
         return [dLat, dLng, distance[2]]
 
-    def __distance(self, lat, lng, dLat, dLng):
+    def __isInZone(self, center, point):
+        min_lat = center[0] - self.SEARCH_ZONE
+        min_lng = center[1] - self.SEARCH_ZONE
+        max_lat = center[0] + self.SEARCH_ZONE
+        max_lng = center[1] + self.SEARCH_ZONE
+        if(min_lat <= point[0] and max_lat >= point[0] and min_lng <= point[1] and max_lng >= point[1]):
+            return True
+        else:
+            return False
+
+    '======================================== PUBLIC ==============================='
+    def distance(self, lat, lng, dLat, dLng):
         x = dLat - lat; y = dLng - lng
         return math.hypot(x, y)
 
-    '======================================== PUBLIC ==============================='
     def deg2rad(self, deg):
         return deg / 180 * math.pi
 
@@ -149,14 +158,14 @@ class Windy:
         closePoint = []
 
         guilder = [lat, lng, self.__interpolate(lat, lng)[2]]
-        min_distance = self.__distance(guilder[0], guilder[1], deslat, deslng)
+        min_distance = self.distance(guilder[0], guilder[1], deslat, deslng)
         cursor = 0
         while(guilder[2] >= self.MIN_VELOCITY_SPEED and cursor <= self.EVOLVE_STEP):
             path.append(guilder)
             cursor += 1
             guilder = self.__field(guilder[0], guilder[1])
             if(deslat != -1 and deslng != -1):
-                cur_distance = self.__distance(guilder[0], guilder[1], deslat, deslng)
+                cur_distance = self.distance(guilder[0], guilder[1], deslat, deslng)
                 if(cur_distance < min_distance):
                     min_distance = cur_distance
                     closePoint = [guilder[0], guilder[1], cursor, min_distance]
@@ -165,8 +174,33 @@ class Windy:
             'closePoint': closePoint
         }
 
-    def searchZone(self,path, closePoint, pointNumber):
-        pass
+    def searchZone(self, path, closePoint, pointNumber):
+        i = closePoint[2] - 1
+        j = closePoint[2] + 1
+        center = closePoint[:2]
+        j_finish = i_finish = 0
+        while(True):
+            if(i> 0 and self.__isInZone(center, path[i])):
+                i -= 1
+            else:
+
+                i_finish = 1
+            if(j<len(path) and self.__isInZone(center, path[j])):
+                j += 1
+            else:
+                j_finish = 1
+            if(i_finish and j_finish):
+                break
+        zone = path[i: j+1]
+        selected = []
+        while(len(selected) < pointNumber):
+            p = random.choice(zone)
+            if(p not in selected):
+                selected.append(p)
+        return selected
+
+
+
 
 
 
