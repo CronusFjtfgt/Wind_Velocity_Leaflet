@@ -12,14 +12,16 @@ class Windy:
     SEARCH_ZONE = 4.5 # degree
     # MAX_SEARCH_ZONE = 5 # degree
     SCALE = 30*60 # velocity keep time 30min = 30*60 sec
+    LAYER_TYPE = ''
     Data = []
     Builder = [] # one wind grid
     Grid = [] # all grid
     Path = {} # all layers path
     lo1 = la1 = dy = dx = nx = ny = 0
 
-    def __init__(self, DATA):
+    def __init__(self, DATA, type):
         self.Data = DATA
+        self.LAYER_TYPE = type
         self.Grid = self.__buildGrid(self.Data)
 
     '======================================== PRIVATE ==============================='
@@ -129,7 +131,7 @@ class Windy:
         degree = self.deg2rad(avgR)
         dLat = (disY / degree) * self.SCALE + lat
         dLng = (disX / (degree * math.cos(self.deg2rad(lat)))) * self.SCALE + lng
-        return [dLat, dLng, distance[2]]
+        return [dLat, dLng, distance[2], self.LAYER_TYPE]
 
     def __isInZone(self, center, point):
         min_lat = center[0] - self.SEARCH_ZONE
@@ -157,7 +159,7 @@ class Windy:
         path = []
         closePoint = []
 
-        guilder = [lat, lng, self.__interpolate(lat, lng)[2]]
+        guilder = [lat, lng, self.__interpolate(lat, lng)[2], self.LAYER_TYPE]
         min_distance = self.distance(guilder[0], guilder[1], deslat, deslng)
         cursor = 0
         while(guilder[2] >= self.MIN_VELOCITY_SPEED and cursor <= self.EVOLVE_STEP):
@@ -183,7 +185,6 @@ class Windy:
             if(i> 0 and self.__isInZone(center, path[i])):
                 i -= 1
             else:
-
                 i_finish = 1
             if(j<len(path) and self.__isInZone(center, path[j])):
                 j += 1
@@ -193,11 +194,16 @@ class Windy:
                 break
         zone = path[i: j+1]
         selected = []
+        cursor = []
         while(len(selected) < pointNumber):
             p = random.choice(zone)
             if(p not in selected):
+                cursor.append(zone.index(p) + i)
                 selected.append(p)
-        return selected
+        return {
+            'Selected': selected,
+            'Cursor': cursor
+        }
 
 
 

@@ -1,10 +1,17 @@
 # -*- coding: UTF-8 -*-
 
+import sys
+sys.setrecursionlimit(3925)
 from Windy import *
 
 class GlobalWindy:
     '多风层数据类'
 
+    POINT_NUMBER = 2 #每层分支个数
+    CLOSE_ZONE = 2 #degree
+    MAX_DEEP = 10
+    MAX_BRANCH = 10
+    branches = 0
     data_path = '../JSON/'
     data_type = ['10m', '100m', '50mb', '100mb', '200mb', '250mb']
     data_name = [
@@ -27,10 +34,10 @@ class GlobalWindy:
             self.DATA[type] = self.data_path + self.data_name[i]
             with open(self.DATA[type], 'r') as d:
                 data = json.load(d)
-                self.WINDY[type] = Windy(data)
+                self.WINDY[type] = Windy(data, type)
                 print 'Load:',type
         distance = self.WINDY['10m'].distance(self.start[0], self.start[1], self.destiny[0], self.destiny[1])
-        dis = self.searchPath(self.start, self.destiny, '10m', distance)
+        dis = self.searchPath(self.start, self.destiny, '10m', distance, self.POINT_NUMBER)
         print dis
         # wind = self.WINDY['10m']
         # Path = wind.evolvePath(self.start[0], self.start[1], self.destiny[0], self.destiny[1])
@@ -44,48 +51,64 @@ class GlobalWindy:
         elif(layer_numb == len(self.data_type) - 1):
             nextLayer = layer_numb - 1
         else:
+            # nextLayer = layer_numb + 1
             nextLayer = layer_numb + random.choice([-1, 1])
         return self.data_type[nextLayer]
 
-    def searchPath(self, start, destiny, type, distance):
+    def searchPath(self, start, destiny, type, distance, pointNumber, deep = 0):
         Windy = self.WINDY[type]
         Path = Windy.evolvePath(start[0], start[1], destiny[0], destiny[1])
         closePoint = Path['closePoint']
-        if(closePoint == [] or closePoint[3] == distance):
-            # print start,'Path End'
+        if(
+                closePoint == []
+                or closePoint[3] == distance
+                or deep > self.MAX_DEEP
+                or self.branches == self.MAX_BRANCH
+        ):
             return {
-                'path': [[-1, -1, -1]],
+                'path': [['NULL']],
                 'distance': float('inf')
             }
-        elif(closePoint[3] < 2):
-            # print 'Path Complete'
+        elif(closePoint[3] < self.CLOSE_ZONE):
+            print 'One Path Complete'
+            self.branches += 1
             return {
                 'path': Path['path'][: closePoint[2] + 1],
                 'distance': closePoint[3]
             }
         else:
             sPath = []
+            # tp = []
             path = []
             dis = []
-            Selected = Windy.searchZone(Path['path'], closePoint, 2)
+            Zone = Windy.searchZone(Path['path'], closePoint, pointNumber)
+            Selected = Zone['Selected']
+            Cursor = Zone['Cursor']
             for i in range(len(Selected)):
                 # print type,' point:',Selected[i]
                 sPath.insert(
                     i,
                     self.searchPath(
                         Selected[i], destiny, self.switchLayer(type),
-                        Windy.distance(Selected[i][0], Selected[i][1], destiny[0], destiny[1])
+                        Windy.distance(Selected[i][0], Selected[i][1], destiny[0], destiny[1]),
+                        pointNumber, deep + 1
                     )
                 )
+                # tp.insert(i, sPath[i]['type'])
                 dis.insert(i, sPath[i]['distance'])
                 path.insert(i, sPath[i]['path'])
-            short_path = path[dis.index(min(dis))]
-            # print 'shortPath: ',short_path
-            if(-1 not in short_path[0]):
-                print type
-                Path['path'].extend(short_path)
+
+            minPoint = dis.index((min(dis)))
+            # short_type = tp[minPoint]
+            short_path = path[minPoint]
+            if('NULL' not in short_path[0]):
+                mainPath = Path['path'][: Cursor[minPoint] + 1]
+                mainPath.extend(short_path)
+                print 'mainpath: ',mainPath
+            else:
+                mainPath = [['NULL']]
             return {
-                'path': Path['path'],
+                'path': mainPath,
                 'distance': min(dis)
             }
 
