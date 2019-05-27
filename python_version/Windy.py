@@ -1,6 +1,5 @@
 # -*- coding: UTF-8 -*-
 
-import json
 import math
 import random
 
@@ -89,10 +88,10 @@ class Windy:
         pass
 
     def __interpolate(self, lat, lng):
-        # if(Grid['grid'] == []):
-        #     return
+        if(self.Grid == []):
+            return
         dlng = lng - self.lo1
-        i = dlng - math.floor(dlng / 360) * 360
+        i = (dlng - math.floor(dlng / 360) * 360) /self.dx
         j = (self.la1 - lat) / self.dy
         fi = int(math.floor(i)); ci = fi + 1
         fj = int(math.floor(j)); cj = fj + 1
@@ -123,14 +122,18 @@ class Windy:
         f = 1 / 298.2572236
         pi = math.pi
         distance = self.__interpolate(lat, lng)
-        disX = distance[0]; disY = distance[1]
+        # disX = distance[0]; disY = distance[1] # 正向路径
+        disX =  -distance[0]; disY = -distance[1] #反向路径
+        #================================ 平均半径计算 ==========================
+        degree = self.deg2rad(avgR)
+        dLat = (disY / degree) * self.SCALE + lat
+        dLng = (disX / (degree * math.cos(self.deg2rad(lat)))) * self.SCALE + lng
+        #================================ 长短半径分开计算 ==========================
         # degreeLat = b * pi / 180
         # degreeLng = a * pi / 180
         # dLat = (disY / degreeLat) * self.scale + lat
         # dLng = (disX / (degreeLng * math.cos(self.deg2rad(lat)))) * self.scale + lng
-        degree = self.deg2rad(avgR)
-        dLat = (disY / degree) * self.SCALE + lat
-        dLng = (disX / (degree * math.cos(self.deg2rad(lat)))) * self.SCALE + lng
+
         return [dLat, dLng, distance[2], self.LAYER_TYPE]
 
     def __isInZone(self, center, point):
@@ -164,6 +167,7 @@ class Windy:
         cursor = 0
         while(guilder[2] >= self.MIN_VELOCITY_SPEED and cursor <= self.EVOLVE_STEP):
             path.append(guilder)
+            # print guilder
             cursor += 1
             guilder = self.__field(guilder[0], guilder[1])
             if(deslat != -1 and deslng != -1):

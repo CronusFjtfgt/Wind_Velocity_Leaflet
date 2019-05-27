@@ -322,7 +322,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 
 	_path: [], // 记录路径[lat, lng]
 	_clickPosition: {
-		lat: 38.42504676844962, lng: 120.94465053527931
+		lat: -1, lng: -1
 	},
 	_allowClick: 0,
 
@@ -614,7 +614,6 @@ var Windy = function Windy(params) {
 		var u = g00[0] * a + g10[0] * b + g01[0] * c + g11[0] * d;
 		var v = g00[1] * a + g10[1] * b + g01[1] * c + g11[1] * d;
 		var m = Math.sqrt(u * u + v * v);
-		// console.log(u+','+v+','+m);
 		return [u, v, m];
 	};
 
@@ -687,9 +686,7 @@ var Windy = function Windy(params) {
 				row.push(row[0]);
 			}
 			grid[j] = row;
-			// console.log(grid[j]);
 		}
-
 
 		callback({
 			date: date,
@@ -704,9 +701,7 @@ var Windy = function Windy(params) {
   * @returns {Object}
   */
 	var interpolate = function interpolate(λ, φ) {
-
 		if (!grid) return null;
-
 		var i = floorMod(λ - λ0, 360) / Δλ; // calculate longitude index in wrapped range [0, 360)
 		var j = (φ0 - φ) / Δφ; // calculate latitude index in direction +90 to -90
 
@@ -714,7 +709,6 @@ var Windy = function Windy(params) {
 			ci = fi + 1;
 		var fj = Math.floor(j),
 			cj = fj + 1;
-
 		var row;
 		if (row = grid[fj]) {
 			var g00 = row[fi];
@@ -886,10 +880,7 @@ var Windy = function Windy(params) {
 
 		var projection = {};
 		var mapArea = (extent.south - extent.north) * (extent.west - extent.east);
-		console.log(mapArea)
-		console.log(VELOCITY_SCALE)
 		var velocityScale = VELOCITY_SCALE * Math.pow(mapArea, 0.4);
-		console.log(velocityScale)
 		var columns = [];
 		var x = bounds.x;
 
@@ -900,7 +891,6 @@ var Windy = function Windy(params) {
 				if (coord) {
 					var λ = coord[0],
 						φ = coord[1];
-						// console.log(λ+','+φ);
 					if (isFinite(λ)) {
 						var wind = grid.interpolate(λ, φ);
 						if (wind) {
@@ -1020,6 +1010,7 @@ var Windy = function Windy(params) {
 				var y = pathParticle.y;
 				// var latlng = map.containerPointToLatLng(L.latLng(x, y));
 				var v = field(x, y);
+
 				// var v = grid.interpolate(x, y);
 				var m = v[2];
 				// var vtype = velocityType;
