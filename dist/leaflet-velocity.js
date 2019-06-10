@@ -687,7 +687,7 @@ var Windy = function Windy(params) {
 			}
 			grid[j] = row;
 		}
-
+		// console.log(grid)
 		callback({
 			date: date,
 			interpolate: interpolate

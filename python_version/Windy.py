@@ -6,16 +6,16 @@ import random
 class Windy:
     '单风层数据类'
 
-    MIN_VELOCITY_SPEED = 0.2 # m/s
-    EVOLVE_STEP = 500 # path step limit
-    SEARCH_ZONE = 4.5 # degree
-    # MAX_SEARCH_ZONE = 5 # degree
-    SCALE = 30*60 # velocity keep time 30min = 30*60 sec
-    LAYER_TYPE = ''
+    MIN_VELOCITY_SPEED = 0.2 # 最低风速m/s
+    EVOLVE_STEP = 2000 # 路径进化限制
+    SEARCH_ZONE = 4.5 # 随机取点范围,约500km
+    SCALE = 30*60 # 风速保持时间 30 min = 30*60 sec
+    AWAY_PERMMIT_DISTANCE = 5 # 允许路径背离度数
+    DISTANCE_TYPE = 'Euclidean' # 'Manhattan' #欧式距离和曼哈顿距离
     Data = []
-    Builder = [] # one wind grid
-    Grid = [] # all grid
-    Path = {} # all layers path
+    Grid = []
+    LAYER_TYPE = ''
+
     lo1 = la1 = dy = dx = nx = ny = 0
 
     def __init__(self, DATA, type):
@@ -148,8 +148,13 @@ class Windy:
 
     '======================================== PUBLIC ==============================='
     def distance(self, lat, lng, dLat, dLng):
-        x = dLat - lat; y = dLng - lng
-        return math.hypot(x, y)
+        if(self.DISTANCE_TYPE == 'Euclidean'):
+            x = dLat - lat; y = dLng - lng
+            return math.hypot(x, y)
+        elif(self.DISTANCE_TYPE == 'Manhattan'):
+            x = math.fabs(dLat - lat)
+            y = math.fabs(dLng - lng)
+            return x+y
 
     def deg2rad(self, deg):
         return deg / 180 * math.pi
@@ -169,20 +174,43 @@ class Windy:
             path.append(guilder)
             # print guilder
             cursor += 1
-            guilder = self.__field(guilder[0], guilder[1])
             if(deslat != -1 and deslng != -1):
                 cur_distance = self.distance(guilder[0], guilder[1], deslat, deslng)
                 if(cur_distance < min_distance):
                     min_distance = cur_distance
                     closePoint = [guilder[0], guilder[1], cursor, min_distance]
+                elif(math.fabs(cur_distance - min_distance) >= self.AWAY_PERMMIT_DISTANCE):
+                    break
+            guilder = self.__field(guilder[0], guilder[1])
         return {
             'path': path,
             'closePoint': closePoint
         }
 
-    def searchZone(self, path, closePoint, pointNumber):
-        i = closePoint[2] - 1
-        j = closePoint[2] + 1
+    def selectInPath(self, path, pointNumber):
+        if(path):
+            selected = []
+            cursor = []
+            while(len(selected) < pointNumber):
+                p = random.choice(path)
+                if(p not in selected):
+                    cursor.append(path.index(p))
+                    selected.append(p)
+            return {
+                'Selected': selected,
+                'Cursor': cursor
+            }
+        else:
+            return
+
+    def selectInZone(self, path, closePoint, pointNumber):
+        if(closePoint[2] == 0):
+            i = 0; j = 1
+        elif(closePoint[2] == len(path) - 1):
+            j = len(path) - 1; i = j -1
+        else:
+            i = closePoint[2] - 1
+            j = closePoint[2] + 1
         center = closePoint[:2]
         j_finish = i_finish = 0
         while(True):
@@ -208,6 +236,16 @@ class Windy:
             'Selected': selected,
             'Cursor': cursor
         }
+
+    def clearPartWind(self, top, left, bottom, right):
+        y1 = int(math.ceil((self.la1 - top)/self.dy)); x1 = int(math.floor(left/self.dx))
+        y2 = int(math.floor((self.la1 - bottom)/self.dy)); x2 = int(math.ceil(right/self.dx))
+        print [y1,x1],[y2,x2]
+        for j in range(y2 - y1):
+            for i in range(x2 - x1):
+                self.Grid[y1 + j][x1 + i] = [0, 0]
+        return True
+
 
 
 
