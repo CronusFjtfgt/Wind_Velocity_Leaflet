@@ -6,7 +6,7 @@ import random
 class Windy:
     '单风层数据类'
 
-    MIN_VELOCITY_SPEED = 0.2 # 最低风速m/s
+    MIN_VELOCITY_SPEED = 1 # 最低风速m/s
     EVOLVE_STEP = 2000 # 路径进化限制
     SEARCH_ZONE = 4.5 # 随机取点范围,约500km
     SCALE = 30*60 # 风速保持时间 30 min = 30*60 sec
@@ -111,7 +111,7 @@ class Windy:
                     )
         return
 
-    def __field(self, lat, lng):
+    def __field(self, lat, lng, REVERSE):
         ''''大地坐标系资料WGS-84
             长半径a=6378137 短半径b=6356752.3142 扁率f=1/298.2572236
             地球周长40075016m
@@ -122,8 +122,10 @@ class Windy:
         f = 1 / 298.2572236
         pi = math.pi
         distance = self.__interpolate(lat, lng)
-        # disX = distance[0]; disY = distance[1] # 正向路径
-        disX =  -distance[0]; disY = -distance[1] #反向路径
+        if(REVERSE):
+            disX =  -distance[0]; disY = -distance[1] #反向路径
+        else:
+            disX = distance[0]; disY = distance[1] # 正向路径
         #================================ 平均半径计算 ==========================
         degree = self.deg2rad(avgR)
         dLat = (disY / degree) * self.SCALE + lat
@@ -162,7 +164,7 @@ class Windy:
     def rad2deg(self, rad):
         return rad / (math.pi / 180)
 
-    def evolvePath(self, lat, lng, deslat = -1, deslng = -1):
+    def evolvePath(self, lat, lng, deslat = -1, deslng = -1, REVERSE = True):
 
         path = []
         closePoint = []
@@ -179,9 +181,10 @@ class Windy:
                 if(cur_distance < min_distance):
                     min_distance = cur_distance
                     closePoint = [guilder[0], guilder[1], cursor, min_distance]
-                elif(math.fabs(cur_distance - min_distance) >= self.AWAY_PERMMIT_DISTANCE):
-                    break
-            guilder = self.__field(guilder[0], guilder[1])
+                # 禁用
+                # elif(math.fabs(cur_distance - min_distance) >= self.AWAY_PERMMIT_DISTANCE):
+                #     break
+            guilder = self.__field(guilder[0], guilder[1], REVERSE)
         return {
             'path': path,
             'closePoint': closePoint
@@ -189,17 +192,23 @@ class Windy:
 
     def selectInPath(self, path, pointNumber):
         if(path):
+            long = len(path) -1
             selected = []
             cursor = []
-            while(len(selected) < pointNumber):
-                p = random.choice(path)
-                if(p not in selected):
-                    cursor.append(path.index(p))
-                    selected.append(p)
-            return {
-                'Selected': selected,
-                'Cursor': cursor
-            }
+            if(len(path) > pointNumber):
+                step = int(long/pointNumber)
+                for i in range(step - 1, long, step):
+                    cursor.append(i)
+                    selected.append(path[i])
+                return {
+                    'Selected': selected,
+                    'Cursor': cursor
+                }
+            else:
+                return {
+                    'Selected': [path[-1]],
+                    'Cursor': [long]
+                }
         else:
             return
 
@@ -237,13 +246,14 @@ class Windy:
             'Cursor': cursor
         }
 
-    def clearPartWind(self, top, left, bottom, right):
+    def clearPartWind(self, country):
+        top,left,bottom,right = country[0],country[1],country[2],country[3]
         y1 = int(math.ceil((self.la1 - top)/self.dy)); x1 = int(math.floor(left/self.dx))
         y2 = int(math.floor((self.la1 - bottom)/self.dy)); x2 = int(math.ceil(right/self.dx))
-        print [y1,x1],[y2,x2]
         for j in range(y2 - y1):
             for i in range(x2 - x1):
                 self.Grid[y1 + j][x1 + i] = [0, 0]
+        # print y1,x1,y2,x2
         return True
 
 
