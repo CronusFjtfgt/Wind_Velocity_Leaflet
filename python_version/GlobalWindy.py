@@ -2,20 +2,23 @@
 
 import json
 import sys
+from os import path as pa
+import time
 import numpy as np
 
 from Windy import *
 
 class GlobalWindy:
     '多风层数据类'
-
+    root = pa.abspath(pa.dirname(__file__)+pa.sep+"..")
     POINT_NUMBER = 5 #每层分支个数
-    MIN_ZONE = 15 #终点区域半径degree
+    MIN_ZONE = 5 #终点区域半径degree
     LAND_ZONE = 3 #近地点起飞范围半径
     MAX_DEEP = 15 #最大递归层数
-    MAX_BRANCH = 2 #最多完成路线
-    data_path = '../JSON/'
-    data_date = '2019061200'
+    MAX_BRANCH = 5 #最多完成路线
+    POOL_NUMBER = 5 #池化节点数
+    data_path = root + '\JSON'
+    data_date = '/2019061200'
     data_type = [
         '10mab',
         '80mab',
@@ -44,13 +47,15 @@ class GlobalWindy:
     AREA_PATH = []
     LAND_PATH = []
     SORT_PATH = []
-    # start = [-10, 109]
-    # destiny = [31, 258]
-    destiny = [31.8, 103.8]
-    start = [37.72, 261.9]
-    Japan_Korea = [41.66, 126.61, 20.45, 142.65]
+    start = []
+    destiny = []
+    FINAL_PATH = []
 
-    def __init__(self):
+    Japan_Korea = [41.66, 126.61, 30.45, 142.65]
+
+    def __init__(self, start, destiny):
+        self.start = start
+        self.destiny = destiny
         sys.setrecursionlimit(3925)
         for i in range(len(self.data_type)):
             type = self.data_type[i]
@@ -61,11 +66,21 @@ class GlobalWindy:
                 self.WINDY[type].clearPartWind(self.Japan_Korea)
                 print 'Load:',type
         # ============================= main ==============================
-        result, list = self.search_close_area_loop(self.start,self.destiny,'250mb')
-        self.rebuild(result, list)
+        branches = [
+            [49,14,14,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [28,14,9,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [14,9,9,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+        ]
+
+        PATH = self.hierarchical_searche(self.start, self.destiny, branches)
+        self.savePath(PATH)
         # ============================= debug =============================
-        # print self.WINDY['300mb'].evolvePath(29.9155561812, 142.024638958, self.destiny[0], self.destiny[1])
-        # print self.WINDY['300mb'].evolvePath(44.42036278591202, 242.78044887399594, self.destiny[0], self.destiny[1])
+        # print self.WINDY['300mb'].evolvePath(39, 261, 37, 112)
+        # print self.WINDY['300mb'].evolvePath(32.403055485197974, 142.22104635893092, -1, -1, False)
 
     def __getPath(self):
         distance = self.WINDY['250mb'].distance(self.start[0], self.start[1], self.destiny[0], self.destiny[1])
@@ -80,6 +95,11 @@ class GlobalWindy:
                 print self.LAND_PATH[i],','
         else:
             print 'search false!'
+
+    def savePath(self, path):
+        print '------------------------------ SEARCH END ------------------------------\r\n'
+        with open('..\PATH\Record.json', 'w') as f:
+            json.dump(path, f)
 
     def switchLayer(self, layerType, probDown = 0.6, probUp = 0.4):
         layer_numb = self.data_type.index(layerType)
@@ -222,56 +242,53 @@ class GlobalWindy:
                 'distance': min(dis)
             }
 
-    def search_close_area_loop(self, start, destiny, type, pointNumber = 5):
-        print 'PATH:',destiny,'(',type,') to',start
+    def search_path_loop(self, start, destiny, type, max_step, branches, pNumb = 5):
+        print 'SEARCHING PATH:', start, 'to', destiny, '(',type,')'
+        print  '  STR In ',time.asctime(time.localtime(time.time()))
         Close = []
         end, deep = 0, 0
-        point = [49,4,2,2,2,2,2,2,2,2,2,2,2,2]
         dis = self.WINDY[type].distance(start[0], start[1], destiny[0], destiny[1])
         Open = [
             {
-                'pre': 'END',
-                'node': [start, dis, type],
+                'pre': 0,
+                'cursor': 0,
+                'type': type,
+                'node': [destiny, dis],
                 'next': type
             }
         ]
         for node in Open:
             Type = node['next']
             Windy = self.WINDY[Type]
-            Path = Windy.evolvePath(node['node'][0][0], node['node'][0][1], destiny[0], destiny[1])
+            Path = Windy.evolvePath(node['node'][0][0], node['node'][0][1], start[0], start[1])
             closePoint = Path['closePoint']
             position = Open.index(node)
-            if(
-                len(Open) >= 21000
-                or len(Close) >= self.MAX_BRANCH
-                or closePoint == []
-            ):
+            if(len(Open) >= max_step or len(Close) == self.MAX_BRANCH):
+                break
+            elif(Path['path'] == []):
                 if(position == end):
                     end = len(Open) - 1
                     deep += 1
-                    print 'SEARCHING... ...',Type
+                    print '    SEARCHING... ...', Type
                 continue
-            elif(
-                closePoint[3] <= self.MIN_ZONE
-            ):
-                Close.append(node)
-                print node,closePoint
             else:
-                Zone = Windy.selectInPath(Path['path'], point[deep])
+                Zone = Windy.selectInPath(Path['path'], branches[deep])
                 Selected = Zone['Selected']
                 Cursor = Zone['Cursor']
-                Selected.append(closePoint[0 : 2])
-                Cursor.append(closePoint[2])
+                if(closePoint != []):
+                    Selected.append(closePoint[0 : 2])
+                    Cursor.append(closePoint[2])
                 length = len(Cursor)
                 for i in range(length):
                     nextLayer = self.switchLayer(Type, 0.9, 0.1)
                     Open.append(
                         {
                             'pre': position,
+                            'cursor': Cursor[i],
+                            'type': Type,
                             'node': [
-                                Selected[i][0 : 2], Cursor[i],
-                                Windy.distance(Selected[i][0], Selected[i][1], destiny[0], destiny[1]),
-                                Type
+                                Selected[i][0 : 2],
+                                Windy.distance(Selected[i][0], Selected[i][1], start[0], start[1])
                             ],
                             'next': nextLayer
                         }
@@ -279,24 +296,153 @@ class GlobalWindy:
                     if(position == end and i == length - 1):
                         end = len(Open) - 1
                         deep += 1
-                        print 'SEARCHING... ...',Type
-        Result = Open[:]
-        Result.sort(key= lambda i: i['node'][2])
-        return Result, Open, Close
-        # for i in range(200):
-        #     print result[i]
+                        print '    SEARCHING... ...',nextLayer
+        Nodes = self.pooling(Open, pNumb * 3, 3)
+        Path = self.rebuild(Nodes, Open)
+        return Nodes, Path
 
-    def rebuild(self, result, list, branches = 5):
-        path = []
-        for node in result[ : branches]:
-            while(node['pre'] != 'END'):
-                n = node['node']
-                Type = n[3]
+    def search_land_loop(self, start, destiny, Node, pre_path):
+        print 'SEARCHING PATH:', start, 'to', destiny
+        print  '  STR In ',time.asctime(time.localtime(time.time()))
+        end, deep = 0, 0
+        NODES = [
+            {
+                'pre': 0,
+                'cursor': 0,
+                'type': Node['type'],
+                'node': Node['node'],
+                'next': Node['next']
+            }
+        ]
+        for node in NODES:
+            Type = node['next']
+            Windy = self.WINDY[Type]
+            Path = Windy.evolvePath(node['node'][0][0], node['node'][0][1], start[0], start[1], True, 50)
+            closePoint = Path['closePoint']
+            position = NODES.index(node)
+            if(Type == '10mab'):
+                break
+            elif(Path['path'] == []):
+                if(position == end):
+                    end = len(NODES) - 1
+                    deep += 1
+                continue
+            else:
+                Zone = Windy.selectInPath(Path['path'], 1)
+                Selected = Zone['Selected']
+                Cursor = Zone['Cursor']
+                if(closePoint != [] and deep <= 2):
+                    Selected.append(closePoint[0 : 2])
+                    Cursor.append(closePoint[2])
+                length = len(Cursor)
+                for i in range(length):
+                    nextLayer = self.switchLayer(Type, 1, 0)
+                    NODES.append(
+                        {
+                            'pre': position,
+                            'cursor': Cursor[i],
+                            'type': Type,
+                            'node': [
+                                Selected[i][0 : 2],
+                                Windy.distance(Selected[i][0], Selected[i][1], start[0], start[1])
+                            ],
+                            'next': nextLayer
+                        }
+                    )
+                    if(position == end and i == length - 1):
+                        end = len(NODES) - 1
+                        deep += 1
+                        print '    SEARCHING... ...', nextLayer
+        # Nodes = self.pooling(NODES, 1)
+        Nodes = NODES[-1 : ]
+        land_path = self.rebuild(Nodes, NODES)
+        Path = pre_path + land_path
+        return Nodes, Path
+
+    def rebuild(self, Nodes, Open):
+        Path = []
+        # branches = len(Nodes)
+        for node in Nodes[ : ]:
+            path = []
+            # distance = node['node'][1]
+            while(True):
                 pre = node['pre']
-                clip = n[1]
-                Path = self.WINDY[Type].evolvePath(n[0][0], n[0][1])[ : clip]
-                path += Path
-                node = list[pre]
-            print path
+                preNode = Open[pre]['node']
+                Type = node['type']
+                clip = node['cursor']
+                p = self.WINDY[Type].evolvePath(preNode[0][0], preNode[0][1])['path']
+                path = p[ : clip] + path
+                if(clip == pre == 0):
+                    break
+                else:
+                    node = Open[pre]
+            Path.append(path)
+        print '  End In:', time.asctime(time.localtime(time.time()))
+        return Path
 
+    def pooling(self, List, branches, step = 1):
+        Result = sorted(List, key= lambda i: i['node'][1])
+        return Result[ : branches : step]
 
+    def hierarchical_searche(self, start, destiny, branches):
+        result = []
+        # turn = 0
+        Nodes, Path = self.search_path_loop(start, destiny, '250mb', 6800, branches[0], 5)
+        # while(True):
+        deep = 0
+        end = len(Nodes) - 1
+        for Node in Nodes:
+            position = Nodes.index(Node)
+            Type = Node['next']
+            if(deep >= 2):
+                break
+            elif(
+                    Node['node'][1] <= self.MIN_ZONE
+                    and Node['type'] == self.data_type[0]
+            ):
+                if(position == end):
+                    end = len(Nodes) - 1
+                    deep += 1
+                continue
+            else:
+                fPath = Path[position][ : ]
+                nodes, path = self.search_path_loop(start, Node['node'][0], Type, 4500, branches[deep],5)
+                length = len(nodes)
+                for i in range(length):
+                    splice_path = fPath + path[i]
+                    Path.append(splice_path)
+                    Nodes.append(nodes[i])
+                    if(position == end and i == length - 1):
+                        end = len(Nodes) - 1
+                        deep += 1
+        pool = self.pooling(Nodes, 20, 2)
+        Nodes = pool
+        for point in pool:
+            pos = Nodes.index(point)
+            path = Path[pos]
+            result.append(
+                {
+                    'distance': point['node'][1],
+                    'path': path
+                }
+            )
+        return result
+        # p = []
+        #     p.append(path)
+        # if(turn == 3):
+        #     for n in Nodes:
+        #         if(n['type'] == self.data_type[0]):
+        #             pos = Nodes.index(n)
+        #             path = Path[pos]
+        #             result.append(
+        #                 {
+        #                     'distance': n['node'][1],
+        #                     'path': path
+        #                 }
+        #             )
+        #     break
+        # Path = p
+        # turn += 1
+        # return result
+                # print ''
+                # n, p = self.search_land_loop(start, destiny, point, path)

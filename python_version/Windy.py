@@ -6,7 +6,7 @@ import random
 class Windy:
     '单风层数据类'
 
-    MIN_VELOCITY_SPEED = 1 # 最低风速m/s
+    MIN_VELOCITY_SPEED = 0.2 # 最低风速m/s
     EVOLVE_STEP = 2000 # 路径进化限制
     SEARCH_ZONE = 4.5 # 随机取点范围,约500km
     SCALE = 30*60 # 风速保持时间 30 min = 30*60 sec
@@ -22,6 +22,7 @@ class Windy:
         self.Data = DATA
         self.LAYER_TYPE = type
         self.Grid = self.__buildGrid(self.Data)
+        self.__release()
 
     '======================================== PRIVATE ==============================='
     def __createBuilder(self, data):
@@ -121,11 +122,11 @@ class Windy:
         avgR = 6371229
         f = 1 / 298.2572236
         pi = math.pi
-        distance = self.__interpolate(lat, lng)
+        m = self.__interpolate(lat, lng)
         if(REVERSE):
-            disX =  -distance[0]; disY = -distance[1] #反向路径
+            disX =  -m[0]; disY = -m[1] #反向路径
         else:
-            disX = distance[0]; disY = distance[1] # 正向路径
+            disX = m[0]; disY = m[1] # 正向路径
         #================================ 平均半径计算 ==========================
         degree = self.deg2rad(avgR)
         dLat = (disY / degree) * self.SCALE + lat
@@ -136,7 +137,7 @@ class Windy:
         # dLat = (disY / degreeLat) * self.scale + lat
         # dLng = (disX / (degreeLng * math.cos(self.deg2rad(lat)))) * self.scale + lng
 
-        return [dLat, dLng, distance[2], self.LAYER_TYPE]
+        return [dLat, dLng, m[2], self.LAYER_TYPE]
 
     def __isInZone(self, center, point):
         min_lat = center[0] - self.SEARCH_ZONE
@@ -147,6 +148,9 @@ class Windy:
             return True
         else:
             return False
+
+    def __release(self):
+        del self.Data
 
     '======================================== PUBLIC ==============================='
     def distance(self, lat, lng, dLat, dLng):
@@ -164,15 +168,13 @@ class Windy:
     def rad2deg(self, rad):
         return rad / (math.pi / 180)
 
-    def evolvePath(self, lat, lng, deslat = -1, deslng = -1, REVERSE = True):
-
+    def evolvePath(self, lat, lng, deslat = -1, deslng = -1, REVERSE = True, limit = 3000):
         path = []
         closePoint = []
-
         guilder = [lat, lng, self.__interpolate(lat, lng)[2], self.LAYER_TYPE]
         min_distance = self.distance(guilder[0], guilder[1], deslat, deslng)
         cursor = 0
-        while(guilder[2] >= self.MIN_VELOCITY_SPEED and cursor <= self.EVOLVE_STEP):
+        while(guilder[2] >= self.MIN_VELOCITY_SPEED and cursor <= limit):
             path.append(guilder)
             # print guilder
             cursor += 1
@@ -210,7 +212,7 @@ class Windy:
                     'Cursor': [long]
                 }
         else:
-            return
+            return []
 
     def selectInZone(self, path, closePoint, pointNumber):
         if(closePoint[2] == 0):

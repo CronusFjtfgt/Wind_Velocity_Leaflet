@@ -183,8 +183,9 @@ L.Control.Velocity = L.Control.extend({
 		this._container = L.DomUtil.create('div', 'leaflet-control-velocity');
 		L.DomEvent.disableClickPropagation(this._container);	
 		map.on('mousemove', this._onMouseMove, this);
-		map.on('click', this._onClick, this);
+		// map.on('click', this._onClick, this);
 		this._container.innerHTML = this.options.emptyString;
+		// this._container.innerHTML = "<img src='../demo/color.PNG' alt='color'>";
 		if (this.options.leafletVelocity.options.onAdd) this.options.leafletVelocity.options.onAdd();
 		return this._container;
 	},
@@ -242,7 +243,9 @@ L.Control.Velocity = L.Control.extend({
 		var htmlOut = "";
 
 		if (gridValue && !isNaN(gridValue[0]) && !isNaN(gridValue[1]) && gridValue[2]) {
-			htmlOut = "<strong>Lat: " + pos.lat.toFixed(2) + "</strong>" 
+			htmlOut =
+				"<img src='../demo/color.PNG' alt='color'>" +
+				"<strong>Lat: " + pos.lat.toFixed(2) + "</strong>"
 				+ ",<strong> Lng: " + pos.lng.toFixed(2) + "</strong>" 
 				+ ",<strong> : " + L.point(e.containerPoint.x, e.containerPoint.y) + "</strong>" 
 				+ ",<strong> " + this.options.velocityType + " Direction: </strong>" + self.vectorToDegrees(gridValue[0], gridValue[1], this.options.angleConvention).toFixed(2) + "°" 
@@ -250,7 +253,7 @@ L.Control.Velocity = L.Control.extend({
 		} else {
 			htmlOut = this.options.emptyString;
 		}
-
+		self._container.innerHTML = "<img src='../demo/color.PNG' alt='color'>";
 		self._container.innerHTML = htmlOut;
 	},
 
@@ -322,7 +325,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 
 	_path: [], // 记录路径[lat, lng]
 	_clickPosition: {
-		lat: -1, lng: -1
+		lat: -999, lng: -999
 	},
 	_allowClick: 0,
 
@@ -395,7 +398,7 @@ L.VelocityLayer = (L.Layer ? L.Layer : L.Class).extend({
 		var bounds = self._map.getBounds();
 		var size = self._map.getSize();
 		var path = self._initPath();
-		console.log(path);
+		// console.log(path);
 
 		var pathColor;
 		switch(self.options.displayOptions.velocityType){
@@ -1167,7 +1170,7 @@ var Windy = function Windy(params) {
 	};
 
 	var start = function start(bounds, width, height, extent, path, callback) {
-		console.log(extent)
+		// console.log(extent)
 		var mapBounds = {
 			south: deg2rad(extent[0][1]),
 			north: deg2rad(extent[1][1]),
